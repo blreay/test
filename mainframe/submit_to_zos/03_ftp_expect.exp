@@ -1,0 +1,72 @@
+#!/usr/bin/expect
+
+proc ftplogin { mainframe user pwd job_file job_name job_id_prompt wait_time} {
+#login
+spawn ftp $mainframe
+expect -re "Name*:*"
+send "$user\r"
+expect "Password:*"
+send "$pwd\r"
+expect "ftp>*"
+send "quote site filetype=jes\r"
+expect "200 SITE command was accepted"
+expect "ftp>*"
+
+#submit job
+send "put $job_file\r"
+expect -re "125 Sending Job to JES internal reader*"
+expect -re "It is known to JES as (JOB\[0-9]+)"
+set job_id "$expect_out(1,string)"
+expect -re "Transfer completed successfully"
+expect "ftp>*"
+
+#check job status
+
+send_user "$job_id_prompt: $job_id:" 
+while {1} {
+   send "\r"
+   expect "ftp>"
+   send "ls\r"
+   #expect "List started OK*"
+   expect -re "$job_name $job_id $user  (ACTIVE|OUTPUT|INPUT)"
+   set job_status "$expect_out(1,string)"
+   expect "List completed successfully"
+   send_user "Hi, the job $job_name status: $job_status"
+   if {"OUTPUT"=="$job_status"} break
+   sleep $wait_time
+}
+
+#get job log
+send "\r"
+expect "ftp>"
+send "get $job_id  $job_id.log \r"
+expect "250 Transfer completed successfully"
+expect "ftp>"
+
+#del job log on mainframe
+send "del $job_id\r"
+expect "ftp>"
+
+#logout
+send "\r"
+expect "ftp>"
+send "bye\r"
+expect eof
+}
+
+#send_tty "Hello, let's start!\n"
+
+set user [lindex $argv 0]
+set pwd  [lindex $argv 1]
+set mainframe [lindex $argv 2]
+set job_file [lindex $argv 3]
+set job_name [lindex $argv 4]
+set job_id_prompt [lindex $argv 5]
+set wait_time [lindex $argv 6]
+
+send_tty "Input param: user: $user, pwd: $pwd, mainframe: $mainframe, job_file: $job_file, job_name: $job_name, job_id_prompt: $job_id_prompt, wait_time: $wait_time.\n"
+
+ftplogin "$mainframe" "$user" "$pwd" "$job_file" "$job_name" "$job_id_prompt" "$wait_time"
+exit
+
+

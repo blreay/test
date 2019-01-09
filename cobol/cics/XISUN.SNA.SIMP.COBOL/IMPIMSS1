@@ -1,0 +1,160 @@
+         CBL  APOST
+      *********************************************************
+      *  FILE:     IMPIMSSV                                   *
+      *  PURPOSE:  SAMPLE IMS SERVER TRANSACTION FOR USE WITH *
+      *            BEA TMA SNA AND IMS    *
+      *  COMMENTS: THIS IS A SIMPLE ECHO SERVER TRANSACTION   *
+      *            THAT ISSUES A RESPONSE CONSISTING OF THE   *
+      *            SAME DATA AS RECEIVED.                     *
+      *  LANGUAGE: COBOL                                      *
+      *  COPYRIGHT (C) 1999 BEA SYSTEMS, INC. ALL RIGHTS      *
+      *  RESERVED                                             *
+      *********************************************************
+      *
+      * $RCSfile: IMPIMSSV.cob,v $
+      * $Revision: 1.5 $
+      * $Date: 2012/10/09 13:46:45 $
+      * $Author: xisun $
+      *
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.  IMPIMSSV.
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. IBM-370.
+       OBJECT-COMPUTER. IBM-370.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       77  GU                         PIC   X(04) VALUE 'GU  '.
+       77  CHNG                       PIC   X(04) VALUE 'CHNG'.
+       77  ISRT                       PIC   X(04) VALUE 'ISRT'.
+       77  PURG                       PIC   X(04) VALUE 'PURG'.
+       77  LOG-TEXT PIC X(60) VALUE SPACES.
+       01  TP-STATUS  PIC S9(8) COMP.
+       01  TP-STATUS2 PIC S9(8) COMP.
+
+      *********************************************************
+      *    REQUEST MESSAGE                                    *
+      *********************************************************
+
+        01  REQUEST-MESSAGE.
+            05  REQ-LL PIC 9(4) COMP VALUE 0.
+            05  REQ-ZZ PIC 9(4) COMP VALUE 0.
+            05  TRAN-CODE PIC X(8) VALUE SPACES.
+            05  FILLER PIC X(1) VALUE SPACES.
+      *     05  REQ-DATA PIC X(32747) VALUE SPACES.
+            05  REQ-DATA.
+              10  REQ-CUSTOMER.
+                  20  REQ-ACCOUNT PIC 9(6) VALUE 0.
+                  20  REQ-NAME PIC X(20).
+                  20  REQ-BALANCE PIC 9(9)V99.
+
+      *********************************************************
+      *    RESPONSE MESSAGE                                   *
+      *********************************************************
+
+        01  RESPONSE-MESSAGE.
+            05  RSP-LL PIC 9(4) COMP VALUE 0.
+            05  RSP-ZZ PIC 9(4) COMP VALUE 0.
+      *     05  FILLER PIC X(1) VALUE SPACES.
+      *     05  RSP-DATA PIC X(32747) VALUE SPACES.
+            05  RSP-DATA.
+              10  RSP-CUSTOMER.
+                  20  RSP-ACCOUNT PIC 9(6) VALUE 0.
+                  20  RSP-NAME PIC X(20).
+                  20  RSP-BALANCE PIC 9(9)V99.
+
+
+       LINKAGE SECTION.
+
+      *********************************************************
+      *    I/O PCB                                            *
+      *********************************************************
+
+       01  IOPCB.
+           05  LTERM                  PIC   X(08).
+           05  FILLER                 PIC   X(02).
+           05  IOPCB-STATUS           PIC   X(02).
+           05  FILLER                 PIC   X(28).
+
+       PROCEDURE DIVISION USING IOPCB.
+
+      *    ENTRY 'DLITCBL' USING IOPCB.
+
+           PERFORM IOPCB-GET    THRU IOPCB-GET-EXIT.
+
+           PERFORM ECHO-MSG     THRU ECHO-MSG-EXIT.
+
+      *    PERFORM 39 TIMES
+               PERFORM ISRT-MSG THRU ISRT-MSG-EXIT
+      *    END-PERFORM.
+
+           GO TO 9999-RETURN.
+
+      *********************************************************
+      *    RETRIEVE THE REQUEST MESSAGE FROM THE IMS QUEUE    *
+      *********************************************************
+
+       IOPCB-GET.
+
+            CALL 'CBLTDLI' USING GU, IOPCB, REQUEST-MESSAGE.
+            IF IOPCB-STATUS NOT = SPACES
+                GO TO 9999-RETURN.
+
+            DISPLAY "RECV(" REQ-LL ")(" REQ-DATA(1:REQ-LL) ")".
+       IOPCB-GET-EXIT.
+           EXIT.
+
+      *********************************************************
+      *    COMPOSE THE RESPONSE MESSAGE                       *
+      *********************************************************
+
+       ECHO-MSG.
+
+      *    THE RESPONSE MESSAGE HAS THE SAME BASIC FORMAT AS
+      *    THE REQUEST MESSAGE. FOR RESPONSE DATA, WE SIMPLY
+      *    RETURN THE REQUEST DATA. HENCE THIS IS AN ECHO
+      *    TRANSACTION.
+
+      *     INSPECT REQ-DATA CONVERTING
+      *         'abcdefghijklmnopqrstuvwxyz' TO
+      *         'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.
+
+            SUBTRACT 9 FROM REQ-LL GIVING RSP-LL.
+            MOVE REQ-ZZ TO RSP-ZZ.
+      *     MOVE REQ-DATA(1:RSP-LL) TO RSP-DATA.
+
+
+            DISPLAY "REQ-ACCOUNT(" REQ-ACCOUNT ")".
+            DISPLAY "REQ-NAME(" REQ-NAME ")".
+            DISPLAY "REQ-BALANCE(" REQ-BALANCE ")".
+
+
+            MOVE 100000 TO RSP-ACCOUNT.
+            MOVE 'JOHN' TO RSP-NAME.
+            MOVE 00024889577 TO RSP-BALANCE.
+
+
+            DISPLAY "RSP-ACCOUNT(" RSP-ACCOUNT ")".
+            DISPLAY "RSP-NAME(" RSP-NAME ")".
+            DISPLAY "RSP-BALANCE(" RSP-BALANCE ")".
+
+       ECHO-MSG-EXIT.
+           EXIT.
+
+      *********************************************************
+      *    INSERT RESPONSE MESSAGE TO IMS QUEUE               *
+      *********************************************************
+
+       ISRT-MSG.
+
+            CALL 'CBLTDLI' USING ISRT, IOPCB, RESPONSE-MESSAGE.
+            IF IOPCB-STATUS NOT = SPACES
+                GO TO 9999-RETURN.
+
+            DISPLAY "SEND(" RSP-LL ")(" RSP-DATA(1:RSP-LL) ")".
+
+       ISRT-MSG-EXIT.
+           EXIT.
+
+       9999-RETURN.
+           GOBACK.

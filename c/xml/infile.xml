@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jsdl:jobDefinition xmlns:jsdl="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdl" xmlns:jsdlxa="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdlxa" name="xajob">
+  <jsdl:application name="xajob">
+    <jsdlxa:xajob accessMethod="mvsjes" target="mvsjes">
+            <jsdlxa:taskString>gold.apayable.cntl(apayjob1) = 0004</jsdlxa:taskString>
+        </jsdlxa:xajob>
+  </jsdl:application>
+</jsdl:jobDefinition>
+

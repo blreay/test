@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmgr:submitJobFromJSDL xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+ xmlns:jmgr="http://www.ibm.com/xmlns/prod/scheduling/1.0/JobManager" 
+ xmlns:jsdl="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdl" 
+ xmlns:jsdljcl="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdljcl" 
+ xmlns:sdo="http://www.eclipse.org/emf/2003/SDO">
+  <jmgr:JobDefinitionDocument>
+   <jsdl:jobDefinition name="JCL">
+    <jsdl:application name="jcl">
+     <jsdljcl:jcl xsi:type="sdo:EDataObjectAnyType">
+      <jsdljcl:JCLParameters xsi:type="sdo:EDataObjectAnyType">
+       <jsdljcl:jcl xsi:type="sdo:EDataObjectAnyType">
+        <jsdljcl:byRefOrByDef xsi:type="sdo:EDataObjectAnyType">
+         <jsdljcl:byReference xsi:type="sdo:EDataObjectAnyType">
+          <jsdljcl:dataset xsi:type="sdo:EDataObjectAnyType">TWSTST.TWSA.JOBLIB</jsdljcl:dataset> 
+          <jsdljcl:member xsi:type="sdo:EDataObjectAnyType">JOB1</jsdljcl:member>
+         </jsdljcl:byReference>
+        </jsdljcl:byRefOrByDef>
+       </jsdljcl:jcl>
+      </jsdljcl:JCLParameters>
+      <jsdljcl:JOBParameters xsi:type="sdo:EDataObjectAnyType">
+        <jsdljcl:jobStreamName xsi:type="sdo:EDataObjectAnyType">JOBS</jsdljcl:jobStreamName>
+        <jsdljcl:inputArrival xsi:type="sdo:EDataObjectAnyType">201206131200
+        </jsdljcl:inputArrival>
+      </jsdljcl:JOBParameters>
+     </jsdljcl:jcl>
+    </jsdl:application>
+    <jsdl:resources/>
+   </jsdl:jobDefinition>
+  </jmgr:JobDefinitionDocument>
+  <jmgr:Alias>ZA86_ZOS1354#JOBS.PROVA.JNUM-622656411</jmgr:Alias>
+  <jmgr:JobId>5e2efa42-1dab-31eb-a8f1-6aaa413a4cec</jmgr:JobId>
+  <jmgr:ClientNotifyURI>https://ts6087.enervt.com:31116/JobManagerRESTWeb/JobScheduler/job
+    </jmgr:ClientNotifyURI>
+  <jmgr:ClientNotifyURI>https:/ts6087.enervt.com:31116/JobManagerRESTWeb/JobScheduler/job
+    </jmgr:ClientNotifyURI>
+</jmgr:submitJobFromJSDL>
+

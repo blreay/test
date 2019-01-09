@@ -1,0 +1,45 @@
+        IDENTIFICATION DIVISION.
+        PROGRAM-ID. LOGERR.
+        AUTHOR. TUXEDO DEVELOPMENT.
+        ENVIRONMENT DIVISION.
+        CONFIGURATION SECTION.
+        DATA DIVISION.
+        WORKING-STORAGE SECTION.
+
+      *****************************************************
+      * Log messages definitions
+      *****************************************************
+        01  DSPERR.
+            05  DSPTRAN PIC X(4).
+            05  FILLER PIC X(1) VALUE " ".
+            05  DSPROUTINE PIC X(14).
+            05  FILLER PIC X(8) VALUE " FAILED(".
+            05  DSPSTATUS PIC 9(8).
+            05  FILLER PIC X(01) VALUE ",".
+            05  DSPSTATUS2 PIC 9(8).
+            05  FILLER PIC X(01) VALUE ")".
+
+        LINKAGE SECTION.
+        77  STR PIC X(14).
+        77  STA PIC S9(8) COMP.
+        77  STA2 PIC S9(8) COMP.
+
+      ******************************************************
+        PROCEDURE DIVISION USING STR, STA, STA2.
+      ******************************************************
+      *****************************************************
+      * Log messages to the userlog
+      *****************************************************
+        DO-LOG-ERR.
+            MOVE EIBTRNID TO DSPTRAN.
+            MOVE STR TO DSPROUTINE.
+            MOVE STA TO DSPSTATUS.
+            MOVE STA2 TO DSPSTATUS2.
+
+            EXEC CICS SEND TEXT
+                FROM(DSPERR)
+                LENGTH(LENGTH OF DSPERR)
+                ERASE TERMINAL FREEKB CURSOR(0)
+            END-EXEC.
+
+            EXIT PROGRAM.

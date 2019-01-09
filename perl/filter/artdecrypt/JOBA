@@ -1,0 +1,38 @@
+#!/bin/ksh
+#
+# EMPTY
+#
+# empty script used for EJR tests
+#
+#m_JobBegin -j JOBA -c a -s START -v 2.0 -p 5 -t COPY
+m_JobBegin -j JOBA -c a -s START -v 2.0 -p 0
+while true ;
+do
+       echo "in while"
+       m_PhaseBegin
+       echo label is ${CURRENT_LABEL}
+       case ${CURRENT_LABEL} in
+(START)
+       JUMP_LABEL=STEP1
+       echo start
+       ;;
+(STEP1)
+       JUMP_LABEL=ENDJOB
+       echo step1
+       ;;
+(ENDJOB)
+        #sleep 3
+       echo end
+       break
+       ;;
+(*)
+       echo MT_RC
+       MT_RC=S999
+       break
+       ;;
+esac
+m_PhaseEnd
+done
+echo "hello, that is in JOBA"
+m_JobEnd
+

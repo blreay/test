@@ -1,0 +1,47 @@
+        IDENTIFICATION DIVISION.
+        PROGRAM-ID. GETHEXS.
+        ENVIRONMENT DIVISION.
+
+        DATA DIVISION.
+        WORKING-STORAGE SECTION.
+      * 01  HEXN   PIC X(4) VALUE X"0000CA84".
+      * 01  DECNUM   REDEFINES HEXN PIC S9(9) COMP-5.
+      * 01  HEXVAL   PIC X(8).
+        01  HEXS     PIC X(16) VALUE "0123456789abcdef".
+        01  DEC      PIC S9(4) COMP.
+        01  FILLER   REDEFINES DEC.
+            02  FILLER PIC X.
+            02  DECBYTE PIC X.
+        01  I   PIC S9(8) COMP.
+        01  J   PIC S9(8) COMP.
+        01  Q   PIC S9(8) COMP.
+        01  R   PIC S9(8) COMP.
+        01  J1  PIC S9(8) COMP.
+        01  Q1  PIC S9(8) COMP.
+        01  R1  PIC S9(8) COMP.
+
+        LINKAGE SECTION.
+        77  NUM PIC S9(18) COMP-5.
+        77  HEXN REDEFINES NUM PIC X(8).
+        77  LEN PIC S9(4) COMP-5.
+        77  STR PIC X(16).
+
+        PROCEDURE DIVISION USING NUM, LEN, STR.
+
+        CONVERT.
+            PERFORM VARYING I FROM 1 BY 1 UNTIL I > LEN
+                COMPUTE J = 2 * I - 1
+                MOVE 0 TO DEC
+                MOVE HEXN(I : 1) TO DECBYTE
+                DIVIDE DEC BY 16 GIVING Q REMAINDER R
+                COMPUTE J1 = J + 1
+                COMPUTE Q1 = Q + 1
+                COMPUTE R1 = R + 1
+                MOVE HEXS(Q1 : 1) TO STR(J : 1)
+                MOVE HEXS(R1 : 1) TO STR(J1 : 1)
+            END-PERFORM.
+            EXIT PROGRAM.
+      *_________Results_______
+      *Hex           d       ----  This is all you get DISPLAY HEXN
+      *Dec        00051844   ----  Decimal equivalent of X'CA84'
+      *Printable  0000CA84   ----  After conversion.

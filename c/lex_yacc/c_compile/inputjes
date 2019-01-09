@@ -1,0 +1,25 @@
+### this is a test ###
+a=4;
+
+# basic case
+#b=submit("JOBA");
+#c=(submit("JOBB"));
+
+### this is a test ###
+#d=(a==4?submit("JOBC"): submit("JOBD"));
+### this is a test ###
+#e=(a!=4?submit("JOBC"): submit("JOBD"));
+### this is a test ###
+
+step1=submit("JOBA");
+step2=submit("JOBB");
+step3=(step1.job.rc == 0? submit("JOBC") : submit("JOBD"));
+print(step2.job.rc);
+print(step1.job.rc);
+print(step3.job.rc);
+step4=(step1.job.rc != 0 || step2.job.rc ==0 ? submit("JOB4C") : submit("JOB4D"));
+#step2.job.rc=1;
+step5=(step1.job.rc == 1001 && step2.job.rc ==1002 && step3.job.rc==1003? submit("JOB5C") : submit("JOB5D"));
+step6=((step1.job.rc == 1001 && step2.job.rc ==1002) && (step3.job.rc==1003 && step2.job.rc != 1002)? submit("JOB6C") : submit("JOB6D"));
+step7=((step1.job.rc == 1001 && step2.job.rc ==1002) || (step3.job.rc==1003 && step2.job.rc != 1002)? submit("JOB7C") : submit("JOB7D"));
+print(step7.job.rc);

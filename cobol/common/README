@@ -1,0 +1,11 @@
+To run:
+1. Compile the source code:
+   cob -x Seq2Index.cbl
+   cob -C WRITELOCK -x UpdateIdx.cbl
+2. Create ISAM file "IDXVIDEO.DAT" from sequential file "SEQVIDEO.DAT":
+   ./Seq2Index
+3. Open two windows to concurrently execute the program that updates the same ISAM file:
+   ./UpdateIdx
+4. The one that is started later will wait for the earlier one to release the record lock by closing the file in the middle of its process. And after that, the two programs will be able to proceed in parallel updating the same file, because they are locking different records in the same file. At the same time, the program also uses an alternate key when creating the ISAM file. It shows that such file can be browsed in order of its alternate key.
+   - The output of the program that is started earlier should be like "UpdateIdx_out1.txt".
+   - The output of the later one should be like "UpdateIdx_out2.txt".

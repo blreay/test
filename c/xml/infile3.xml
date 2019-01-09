@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jsdl:jobDefinition xmlns:jsdl="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdl" 
+xmlns:jsdljcl="http://www.ibm.com/xmlns/prod/scheduling/1.0/jsdljcl">
+<jsdl:application name="jcl">
+ <jsdljcl:jcl>
+  <jsdljcl:JCLParameters>
+ <jsdljcl:jcl>
+ <jsdljcl:byRefOrByDef>
+  <jsdljcl:byDefinition>
+   <jsdljcl:jclDefinition>
+      /NORMAL JOB,'TWS JOB',CLASS=A,MSGCLASS=A, 
+      //MSGLEVEL=(1,1)                           
+      //*                                        
+      //STEP1 EXEC PGM=IEFBR14 
+    </jsdljcl:jclDefinition>
+  </jsdljcl:byDefinition>
+ </jsdljcl:byRefOrByDef>
+ </jsdljcl:jcl>
+ </jsdljcl:JCLParameters>
+ <jsdljcl:JOBParameters>
+  <jsdljcl:jobStreamName>${tws.jobstream.name}</jsdljcl:jobStreamName>
+  <jsdljcl:inputArrival>${tws.job.ia}</jsdljcl:inputArrival>
+ </jsdljcl:JOBParameters>
+ </jsdljcl:jcl>
+</jsdl:application>
+</jsdl:jobDefinition>
+

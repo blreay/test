@@ -1,0 +1,1 @@
+export COBPATH=$COBPATH:$PWD

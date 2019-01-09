@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sqlca.h>
+#include "dlfcn.h" /* 包含动态链接功能接口文件 */
+ 
+#define SOFILE "./libuser_main.so" /* 指定动态链接库名称 */
+
+int user_main2(char* sqlstr) {
+		char sql_stmt[1024] = { 0 };
+		/*strcpy(sql_stmt, "SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN FROM gdg_define");*/
+		strcpy(sql_stmt, sqlstr);
+
+        EXEC SQL BEGIN DECLARE SECTION;
+                char gdg_name[256];
+                char gdg_gen_max[256];
+                char gdg_gen_cur[256];
+                char username1[51]="";
+                EXEC SQL VAR username1 IS STRING(51);
+        EXEC SQL END DECLARE SECTION;
+		
+		EXEC SQL PREPARE select_stmt FROM :sql_stmt; 
+		EXEC SQL DECLARE c1 CURSOR FOR select_stmt; 
+		EXEC SQL OPEN c1; 
+		EXEC SQL WHENEVER NOT FOUND DO BREAK; 
+		while(1) 
+		{ 
+			EXEC SQL FETCH c1 INTO :gdg_name, :gdg_gen_max, :gdg_gen_cur; 
+			if( sqlca.sqlcode == 1403) break;
+			printf("The name is: %s,    The max gen is: %s,    The current gen is :%s\n", gdg_name, gdg_gen_max, gdg_gen_cur);
+		  } 
+		EXEC SQL CLOSE c1; 	
+}
+
+int main(int argc,char* argv[]) 
+{
+        EXEC SQL BEGIN DECLARE SECTION;
+                char *uid = "scott/tiger@orcl";
+                long userid=0;
+                char username[51]="";
+                EXEC SQL VAR username IS STRING(51);
+        EXEC SQL END DECLARE SECTION;
+
+        EXEC SQL CONNECT :uid;
+        if(sqlca.sqlcode == 0){
+                printf("connect sucess!\n");
+        } else {
+                printf("connect fail!\n");
+				return -1;
+		}
+				
+		EXEC SQL DECLARE cur_user CURSOR FOR SELECT DEPTNO, DNAME FROM DEPT;
+		EXEC SQL OPEN cur_user;
+		EXEC SQL WHENEVER NOT FOUND DO BREAK; 
+
+         while(1){
+			userid=0;
+			strcpy(username,"");
+			EXEC SQL FETCH cur_user INTO  :userid, :username;
+			if( sqlca.sqlcode == 1403) break;
+			printf("userid=%ld,username=%s\n",userid,username);
+         }
+
+         EXEC SQL CLOSE cur_user;
+
+ 		 /************************/
+		 printf("BEGIN to load .so and run\n");
+      void *dp;
+      char *error;
+
+      dp=dlopen(SOFILE,RTLD_LAZY); /* 打开动态链接库 */
+      
+      if (dp==NULL) /* 若打开失败则退出 */
+      {
+          fputs(dlerror(),stderr);
+          exit(1);
+      }
+	  
+	  void (*p_user_main) (char* str); 
+      
+      p_user_main=dlsym(dp,"user_main"); /* 定位取日期函数 */      
+      error=dlerror(); /* 检测错误 */
+      if (error) /* 若出错则退出 */
+      {
+          fputs(error,stderr);
+          exit(1);
+      }
+      
+      p_user_main("SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN FROM gdg_define"); /* 调用此共享函数 */      
+      error=dlerror(); /* 检测错误 */
+      if (error) /* 若出错则退出 */
+      {
+          fputs(error,stderr);
+          exit(1);
+      }      
+      dlclose(dp); /* 关闭共享库 */
+
+	  /*user_main("SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN FROM gdg_define");*/
+	  printf("END to load .so and run\n");
+
+         /* EXEC SQL COMMIT WORK RELEASE;*/
+         EXEC SQL ROLLBACK WORK RELEASE;
+		 		 
+         return 0;
+}

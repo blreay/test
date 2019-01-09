@@ -1,0 +1,135 @@
+##############################################################
+#
+##                                                         
+##   (C) COPYRIGHT International Business Machines Corp.   
+##   1993, 2013                                            
+##   All Rights Reserved                                   
+##   Licensed Materials - Property of IBM                  
+##   5724-B44                                              
+##                                                         
+##   US Government Users Restricted Rights -               
+##   Use, duplication or disclosure restricted by          
+##   GSA ADP Schedule Contract with IBM Corp.              
+##                                                         
+##                                                                       
+##            NOTICE TO USERS OF THE SOURCE CODE EXAMPLES                
+##                                                                       
+## INTERNATIONAL BUSINESS MACHINES CORPORATION PROVIDES THE SOURCE CODE  
+## EXAMPLES, BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, AS IS          
+## WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,            
+## INCLUDING, BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF               
+## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE     
+## RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOURCE CODE EXAMPLES,   
+## BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, IS WITH YOU.  SHOULD     
+## ANY PART OF THE SOURCE CODE EXAMPLES PROVE DEFECTIVE, YOU (AND NOT    
+## IBM) ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR OR     
+## CORRECTION.  THIS PROGRAM MAY BE USED, EXECUTED, COPIED, MODIFIED     
+## AND DISTRIBUTED WITHOUT ROYALTY FOR THE PURPOSE OF DEVELOPING,        
+## MARKETING, OR DISTRIBUTING.                                           
+##                                                                       
+##                                                                       
+#
+##############################################################
+ 
+INTRODUCTION
+------------
+ 
+This communication verification sample is based on two CICS C application programs
+which are designed to be used to test whether basic CICS ISC functionality works
+using a configured communication definition between any two given CICS
+servers.  The code has been designed to use common source to run on any
+given CICS platform. 
+ 
+OVERVIEW
+---------
+You should have configured communication between two regions before using
+this sample. For more information on how to configure communication 
+between two regions refer to "Communicating" topic in the TXSeries infocenter.
+
+The Front End program CICSPING should be called by the CICS transaction
+PING and will perform Function Shipping, Distributed Program Link,
+Asynchronous Processing, and Distributed Transaction Programming to the
+back end program CICSPONG.  The front end CICSPING will check
+invocation and details of the communication definition and then perform
+the tests in four steps, each of which can be invoked separately if
+required.
+ 
+All handleable errors and status messages are reported to the user's
+terminal using native 3270 SEND TEXT commands and are also written to
+the CICS CSMT log.  Any DTP state errors are reported and the
+transaction will immediately terminate with the CICS abend code STAT.
+Most CICS ISC errors should produce the SYSIDERR or TERMERR conditions
+and these will be handled and reported to the user. The SYSIDERR
+condition will cause termination of the test since it usually reports a
+fatal problem.  Some CICS ISC errors may result in the ATNI abend code,
+these are not handled and so the program will abend.
+ 
+The back end CICSPONG has logic to tell which invocation mode was used
+to start it and this is reported to the CICS CSMT log along with any
+DTP errors detected.
+ 
+All messages have time stamps and unique 3 digit numbers as follows:
+ 
+     Enn -  indicates an error
+     Pnn -  indicates a status message from CICSPING
+     Qnn -  indicates a status message from CICSPONG
+ 
+The PING transaction takes input directly from the screen along with
+the tranid and so the given SYSID and test number need to be entered
+along with the tranid.  The parsing of the input is limited and the
+SYSID field must contain 4 characters and the test number 1 character.
+If the SYSID field is the name of the local SYSID or is left blank then
+the test will still run but in local mode although no DTP will be
+possible and thus will not be attempted.  This is very useful for
+checking the setup on the local system.
+
+These programs can be used to verify the communication using different
+connection type i.e. cics_tcp, ppc_tcp, local_sna and ppc_gateway.
+
+SETUP
+-----
+Translate and comple the source using the cicstcl utility,
+i.e. "cicstcl -lC -de cicsping" or the provided Makefile.
+Then move the executables cicsping and cicspong to your
+/var/cics_regions/<region>/bin directory.
+
+Add transaction defintions for PING in the front-end region and PONG in
+the back-end region and program definitions for CICSPING in the front-end
+region and CICSPONG in the back-end region to the permanent and runtime
+databases. If you want to verify the communication from either region
+add these transaction defintions and program definitions in the both the
+regions as follows:
+
+ cicsadd -r <region> -c td -B PING ProgName=CICSPING
+ cicsadd -r <region> -c td -B PONG RSLKey=public ProgName=CICSPONG IsBackEndDTP=yes
+ cicsadd -r <region> -c pd -B CICSPING RSLKey=public PathName=cicsping
+ cicsadd -r <region> -c pd -B CICSPONG RSLKey=public PathName=cicspong
+
+Other RSL security attributes can be used but these should get you working.
+Then away you go.
+
+ 
+ 
+SYNTAX
+------
+Connect to the front-end terminal and issue the PING transaction as follows:
+ 
+PING <sysid> <test>
+ 
+ where
+ 
+ <sysid> is a 4 character CICS SYSID
+ <test>  is a one character number
+ 
+ At least one of the options must be given as input to PING.
+ 
+Syntax examples:
+ 
+     PING ISC1     - run all tests to ISC1
+     PING ISC1 1   - run only test 1 (FS TS) to ISC1
+     PING ISC1 2   - run only test 2 (DPL) to ISC1
+     PING ISC1 3   - run only test 3 (AP) to ISC1
+     PING ISC1 4   - run only test 4 (DTP) to ISC1
+     PING 2        - run test 2 without ISC option
+ 
+ 

@@ -1,0 +1,37 @@
+#
+# General
+#
+export LANG=C
+export OS_TYPE=$(uname -s)
+
+#
+# Cobol
+#
+case ${COBOL_COMPILER} in
+	COBOL-IT)
+		cobdir="COBOLITDIR"
+		coblib="COB_LIBRARY_PATH"
+		export $cobdir=/opt/cobol-it-64
+#		export COB_ENABLE_XA=1
+		export COBOLIT_LICENSE=/opt/cobol-it-64/citlicense.xml
+                export COB_CC=gcc
+		;;
+	MF-COBOL)
+		cobdir="COBDIR"
+		coblib="COBPATH"
+		export $cobdir=/opt/microfocus/cobol5.1
+		;;
+esac
+eval cdval="$"$cobdir
+export OBJECT_MODE=64
+
+#
+# Path & Libpath
+#
+
+export PATH=${cdval}/bin:${PATH}
+export LD_LIBRARY_PATH=${cdval}/lib:$LD_LIBRARY_PATH:/opt/mqm/lib64
+
+#export $coblib=${APPHOME}/DML:${KIXDIR}/bin:${APPHOME}/PRG
+#export COBCPY=/opt/mqm/inc/cobcpy64
+#export COBCPY=/newspace/minhui/cobol/testcase/copy

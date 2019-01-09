@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sqlca.h>
+
+int user_main1(char* sqlstr) {
+		char sql_stmt[1024] = { 0 };
+		/*strcpy(sql_stmt, "SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN FROM gdg_define");*/
+		strcpy(sql_stmt, sqlstr);
+
+        EXEC SQL BEGIN DECLARE SECTION;
+                char gdg_name[256];
+                char gdg_gen_max[256];
+                char gdg_gen_cur[256];
+                char username1[51]="";
+                EXEC SQL VAR username1 IS STRING(51);
+        EXEC SQL END DECLARE SECTION;
+		
+		EXEC SQL PREPARE select_stmt FROM :sql_stmt; 
+		EXEC SQL DECLARE c1 CURSOR FOR select_stmt; 
+		EXEC SQL OPEN c1; 
+		EXEC SQL WHENEVER NOT FOUND DO BREAK; 
+		while(1) 
+		{ 
+			EXEC SQL FETCH c1 INTO :gdg_name, :gdg_gen_max, :gdg_gen_cur; 
+			if( sqlca.sqlcode == 1403) break;
+			printf("The name is: %s,    The max gen is: %s,    The current gen is :%s\n", gdg_name, gdg_gen_max, gdg_gen_cur);
+		  } 
+		EXEC SQL CLOSE c1; 	
+}
+
+int main(int argc,char* argv[]) 
+{
+        EXEC SQL BEGIN DECLARE SECTION;
+                char *uid = "scott/tiger@orcl59";
+                long userid=0;
+                char username[51]="";
+                EXEC SQL VAR username IS STRING(51);
+        EXEC SQL END DECLARE SECTION;
+
+        EXEC SQL CONNECT :uid;
+        if(sqlca.sqlcode == 0){
+                printf("connect sucess!\n");
+        } else {
+                printf("connect fail!\n");
+				return -1;
+		}
+				
+		EXEC SQL DECLARE cur_user CURSOR FOR SELECT DEPTNO, DNAME FROM DEPT;
+		EXEC SQL OPEN cur_user;
+		EXEC SQL WHENEVER NOT FOUND DO BREAK; 
+
+         while(1){
+			userid=0;
+			strcpy(username,"");
+			EXEC SQL FETCH cur_user INTO  :userid, :username;
+			if( sqlca.sqlcode == 1403) break;
+			printf("userid=%ld,username=%s\n",userid,username);
+         }
+
+         EXEC SQL CLOSE cur_user;
+
+ 		 /************************/
+		 printf("BEGIN to run\n");
+		 user_main("SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN FROM gdg_define");
+		 printf("END to run\n");
+
+         /* EXEC SQL COMMIT WORK RELEASE;*/
+         EXEC SQL ROLLBACK WORK RELEASE;
+		 		 
+         return 0;
+}

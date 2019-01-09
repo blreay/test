@@ -1,0 +1,113 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. cblopedb.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+******* type definitions for compatibility Cobol/C programs
+       77  char                   pic s9(2)  comp-5 is typedef.
+       77  uchar                  pic  9(2)  comp-5 is typedef.
+       77  short                  pic s9(4)  comp-5 is typedef.
+       77  ushort                 pic  9(4)  comp-5 is typedef.
+       77  int                    pic s9(9)  comp-5 is typedef.
+       77  uint                   pic  9(9)  comp-5 is typedef.
+       77  dlfloat                           comp-2 is typedef.
+       77  dfloat                            comp-2 is typedef.
+       77  float                             comp-1 is typedef.
+       77  ppointer               procedure-pointer is typedef.
+       77  dpointer               pointer           is typedef.
+       77  void                   pic  9(2)  comp-5 is typedef.
+******* 32 bits
+*******77  long                   pic s9(9)  comp-5 is typedef.
+*******77  ulong                  pic  9(9)  comp-5 is typedef.
+******* 64 bits
+       77  long                   pic s9(18)  comp-5 is typedef.
+       77  ulong                  pic  9(18)  comp-5 is typedef.
+**************************************************************** 
+        01 DISPLAY-VARIABLES.
+        05 D-CUSTCD PIC X(099).
+        05 EXECODE PIC X(32).
+        05 CMDLN    PIC X(1024).
+        05 D-CUSTNM PIC X(035).
+        01 D-USERNAME PIC X(010).
+        01 D-PASSWD PIC X(010).
+        01 D-DB-STRING PIC X(020).
+        01 D-TOTAL-QUERIED PIC 9(4) VALUE ZERO.
+
+       01 wcc-prog          pic x(80).
+       01 prog-ret-code     pic s9(4) comp-5 value zero.
+       01 mwlogin.
+          02 mwlogin-len pic S9(4) comp-5.
+          02 mwlogin-arr pic x(127).  
+**************************************************************** 
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+             01 H-SQL             PIC X(128).
+             01 ORACLELOGIN       PIC X(127).
+                01 USERNAME PIC X(010).
+                01 PASSWD PIC X(010).
+                01 DB-STRING PIC X(099).
+                01 CUSTCD PIC X(099).
+                01 CUSTNM PIC X(099).
+           EXEC SQL END DECLARE SECTION END-EXEC.  
+           EXEC SQL INCLUDE SQLCA END-EXEC.  
+**************************************************************** 
+       LINKAGE SECTION.
+       01  connstr     pic x(255).
+       01  P1 usage pointer.
+       01  P2 usage pointer.
+       01  P3 usage pointer.
+       01  lk-length usage long.
+       01  lk-string.
+           05 filler pic x occurs 0 to 100 depending lk-length.
+**************************************************************** 
+       PROCEDURE DIVISION.
+       MAIN-ENTRY section.
+       DEBUT.
+           display "begin to operate DB".
+       LOGDB SECTION.
+       entry "cblopedbentry" using connstr.
+       STRT-DO-CONNECT.
+		move connstr to DB-STRING.
+        DISPLAY "DB-STRING=", DB-STRING.
+            EXEC SQL
+             CONNECT :DB-STRING
+            END-EXEC.
+
+            EXEC SQL SELECT GDG_BASE_NAME, GDG_MAX_GEN
+        INTO :CUSTCD, :CUSTNM
+        FROM gdg_define
+        END-EXEC.
+
+        MOVE SPACES TO D-CUSTCD.
+        MOVE SPACES TO D-CUSTNM.
+        
+        DISPLAY "SQLCODE: ", SQLCODE OF SQLCA.
+        DISPLAY "CUSTCD CUSTNM".
+        DISPLAY "-".
+		MOVE SQLCODE OF SQLCA TO EXECODE.
+        MOVE CUSTCD TO D-CUSTCD.
+        MOVE CUSTNM TO D-CUSTNM.
+        DISPLAY EXECODE, " ", D-CUSTCD, " ", D-CUSTNM.
+        DISPLAY "connstr=", connstr.
+********* print CONNEC string *********************
+        move low-value to D-CUSTCD(length of D-CUSTCD:1).
+        move low-value to D-CUSTNM(length of D-CUSTNM:1).
+        move low-value to EXECODE(length of EXECODE:1).
+        move x'00' to CMDLN.
+        call "sprintf" using CMDLN 
+             "echo $(/bin/date +%s) LOGIN[%s] >>/tmp/extproc.log"&x"00" 
+                   "%Y%m%d_%H%M%S"&x"00" 
+                   connstr.
+        DISPLAY "CMDLN=", CMDLN.
+        CALL "system" using CMDLN.
+********* print SQL output *********************
+        move x'00' to CMDLN.
+        call "sprintf" using CMDLN 
+             "echo $(/bin/date +%s) [%s][%s][%s][%s] >>/tmp/extproc.log"&x"00" 
+                   "%Y%m%d_%H%M%S"&x"00" 
+                   "SQLRESULT"&x"00" 
+                   EXECODE
+                   D-CUSTCD
+                   D-CUSTNM.
+        DISPLAY "CMDLN=", CMDLN.
+        CALL "system" using CMDLN.
+        CALL "system" using "/bin/date >> /tmp/extproc.log"&x"00".
+        exit program returning 7.

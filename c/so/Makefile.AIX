@@ -1,0 +1,19 @@
+CGFLAG=-brtl -D_LARGE_FILES -D_TMNOLICENSE -D_THREAD_SAFE_ERRNO -brtl -qlanglvl=extended -D_AIX_LARGE_MSGQUEUES -D_TMAIX4 -q64 -D_LARGE_FILES -D__XCOFF32__ -D__XCOFF64__ -D_GPTHREADS_RFUNCS0 -D_THREAD_SAFE -DIOP_THREAD_SAFE -DOBB_ANSI_PROTO -DORB_ANSI_PROTO -Daix -DIOP_THREAD_SAFE  -O -DXPATH -DNOWHAT    -D_TMXPG3INTL -D_TMXDRLIB -D_GPTHREADS -DOPEN_LDAP -DCERTC_SW_PLATFORM=9 -DCERTC_HW_PLATFORM=11
+CPP=cc
+
+libALLPGM.so: $(OBJ)
+	#g++ -o $@ -shared -Wl,-G PGMTEST.c -maix64 -lstdc++
+	#g++ -o $@ -shared -Wl,-G PGMTEST.c  -lstdc++
+	#gcc -g PGMTEST.c -fPIC -shared -o $@ -lstdc++
+	#gcc -g PGMTEST.c -fPIC -shared -o PGMTEST.so -lstdc++
+	$(CPP) $(CGFLAG) -qmkshrobj -o PGMTEST.so PGMTEST.c
+	#gcc -g $< -fPIC -qmkshrobj -o $@ -lstdc++  -I $(ORACLE_HOME)/precomp/public -L $(ORACLE_HOME)/lib -lclntsh
+clean:
+	rm -rf *.so
+
+all:clean libALLPGM.so
+	echo all
+
+run:all
+	export COBPATH=`pwd`
+	EJR -v TESTJOB.ksh

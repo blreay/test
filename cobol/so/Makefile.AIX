@@ -1,0 +1,143 @@
+PJROOT=/nfs/users/zhaozhan/test
+DIR_C_SO=$(PJROOT)/c/so
+DIR_C_PROC=$(PJROOT)/c/pro_c
+DIR_COBOL_SO=$(PJROOT)/cobol/so
+
+SHRLIBNAME=libuser_main.so
+DYNLIBNAME=${DIR_C_PROC}/libuser_dyn.so
+DYNLIBNAME_TOSO=${DIR_C_PROC}libuser_linkedtoso.so
+
+MFCINC = -I$(COBDIR)/include
+MFCLIB = -L$(COBDIR)/lib
+#MFCLIB += -lcobrts64 -lcobcrtn64 -lcobmisc64 -lcobscreen64
+#MFCLIB += -lcobrts64 
+
+SETENV=export COBPATH=$$COBPATH:${PJROOT}/c/so:${PJROOT}/c/pro_c:${PJROOT}/cobol/so
+ACT_RECOVER_RUNB=cp $(MT_ROOT)/COBOL_MF/runb.orig $(MT_ROOT)/COBOL_MF/runb
+
+all: clean main main_use_objectfile bsoruncso.so csorunbso.so runcso.so
+	echo "all done"
+
+${DYNLIBNAME}: ${DIR_C_PROC}/user_dyn.pc
+	proc iname=$< oname=${DIR_C_PROC}/user_dyn.c
+	#gcc -g $< -fPIC -shared -o $@ -lstdc++  -I $(ORACLE_HOME)/precomp/public -L$(ORACLE_HOME)/lib -lclntsh
+	#cob -Z "$<" -CC -I${ORACLE_HOME}/precomp/public -L${ORACLE_HOME}/lib -lclntsh
+	gcc -maix64 -I$(ORACLE_HOME)/precomp/public -L$(ORACLE_HOME)/lib ${DIR_C_PROC}/user_dyn.c -o $@ -lclntsh -shared
+	#gcc -maix64 -I$(ORACLE_HOME)/precomp/public -L$(ORACLE_HOME)/lib $< -o $@ -lclntsh -fPIC -shared -lstdc++
+
+main: bsoruncso.so
+	#gcc -ldl $(MFCINC) $(MFCLIB) -L${PWD} -lbsoruncso -L${PJROOT}/c/pro_c -luser_dyn main.c -o $@ 
+	cob main.c -ldl -CC $(MFCINC) $(MFCLIB) -L${PWD} -lbsoruncso -L${PJROOT}/c/pro_c -luser_dyn -o $@ 
+
+main_use_objectfile:
+	#gcc -ldl -L${PJROOT}/c/pro_c -luser_dyn $(MFCINC) $(MFCLIB) bsoruncso.o main_use_objectfile.c -o $@ 
+	cob main_use_objectfile.c -ldl -CC $(MFCINC) $(MFCLIB) -L${PWD} -lbsoruncso -L${PJROOT}/c/pro_c -luser_dyn -o $@ 
+
+bsoruncso.so: bsoruncso.cbl
+	cob -z $<
+	cob -Z $<
+
+csorunbso.so: csorunbso.c
+	cob -z $<  -L${PWD} -lbsoruncso
+	cob -Z $<  -L${PWD} -lbsoruncso
+
+runcso.so: runcso.cbl
+	#cob -u $<  -L${PWD} -lbsoruncso
+	cob -Z $<  -L${PWD} -lbsoruncso
+
+newrunb: ${DYNLIBNAME}
+	cd $(MT_ROOT); \
+	if test ! -f COBOL_MF/runb.orig; then cp COBOL_MF/runb COBOL_MF/runb.orig; echo "runb is backuped"; fi;\
+	rm -f COBOL_MF/runb; \
+	./make.sh RUNB_ADD_OPT="-L${PJROOT}/c/pro_c -luser_dyn"; \
+	if test "$$?" != "0"; then \
+		echo "ERROR: rebuild newrunb"; \
+		exit 3; \
+	fi; \
+	export COBPATH=$(COBPATH):${PJROOT}/c/so:${PJROOT}/c/pro_c:${PJROOT}/cobol/so 
+############################################################################
+test: test_so_none test_gnt_cso test_gnt_cso_func test_bso_cso test_cso_bso
+
+testdumy: newrunb
+	$(SETENV); \
+	#EJR -v ${PJROOT}/c/so/TESTJOB.ksh
+	${ACT_RECOVER_RUNB}
+
+test_so_none: ${DIR_C_SO}/PGMTEST.so 
+	$(SETENV); \
+	EJR -v job_so_none.ksh
+
+test_gnt_cso: ${DIR_COBOL_SO}/runcso.gnt ${DYNLIBNAME}
+	$(SETENV); \
+	EJR -v job_gnt_cso.ksh 
+
+.IGNORE: test_gnt_cso_func
+test_gnt_cso_func: newrunb ${DIR_COBOL_SO}/runcsofunc.gnt
+	$(SETENV); \
+	EJR -v job_gnt_cso_func.ksh 
+	${ACT_RECOVER_RUNB}
+
+test_bso_cso: clean newrunb ${DIR_COBOL_SO}/bsoruncso.so
+	$(SETENV); \
+	EJR -v job_bso_cso.ksh
+	${ACT_RECOVER_RUNB}
+
+test_cso_bso1111: ${DIR_COBOL_SO}/libbsoruncso.so ${DIR_COBOL_SO}/csorunbso.so 
+	$(SETENV); \
+	EJR -v job_cso_bso.ksh
+
+test_cso_bso: $(DIR_COBOL_SO)/libcblopedb.so ${DIR_COBOL_SO}/csorunbso.so 
+	$(SETENV); \
+	EJR -v job_cso_bso.ksh
+############################################################################
+${DIR_COBOL_SO}/runcso.gnt: ${DIR_COBOL_SO}/runcso.cbl
+	cob -u $< -o $@ 
+
+${DIR_COBOL_SO}/runcsofunc.gnt: ${DIR_COBOL_SO}/runcsofunc.cbl
+	cob -u $< -o $@ 
+
+${DIR_C_SO}/PGMTEST.so:${DIR_C_SO}/PGMTEST.c
+	gcc -maix64 -I$(ORACLE_HOME)/precomp/public -L$(ORACLE_HOME)/lib $< -o $@ -lclntsh -shared
+
+${DIR_COBOL_SO}/bsoruncso.so:${DIR_COBOL_SO}/bsoruncso.cbl
+	cob -z $< -o $@
+
+${DIR_COBOL_SO}/libbsoruncso.so:${DIR_COBOL_SO}/bsoruncso.cbl
+	cob -Z $< -o $@
+
+${DIR_COBOL_SO}/csorunbso.so: ${DIR_COBOL_SO}/csorunbso.c
+	#cob -z $<  -L${DIR_COBOL_SO} -lbsoruncso -o $@
+	#cob -Z $<  -L${DIR_COBOL_SO} -lbsoruncso -o $@
+	#cob -z $<  -L${DIR_COBOL_SO} -lcblopedb -o $@
+	cob -Z $<  -L${DIR_COBOL_SO} -lcblopedb -o $@
+	#gcc -maix64 -I$(ORACLE_HOME)/precomp/public -L$(ORACLE_HOME)/lib $< -o $@ -lclntsh -shared -L${DIR_COBOL_SO} -lcblopedb
+
+$(DIR_COBOL_SO)/cblopedb.so: $(DIR_COBOL_SO)/cblopedb.pco
+	@if [ -z "${ORACLE_HOME}" ]; then \
+		echo "ORACLE_HOME not set. See Oracle installation and configuration"; \
+		exit 1; \
+	fi; \
+	${ORACLE_HOME}/bin/procob ${PCOOPT} iname=$< oname=$(DIR_COBOL_SO)/cblopedb.cob
+	cob -z ${COBOPT} $(DIR_COBOL_SO)/cblopedb.cob 
+
+$(DIR_COBOL_SO)/libcblopedb.so: $(DIR_COBOL_SO)/cblopedb.pco
+	@if [ -z "${ORACLE_HOME}" ]; then \
+		echo "ORACLE_HOME not set. See Oracle installation and configuration"; \
+		exit 1; \
+	fi; \
+	${ORACLE_HOME}/bin/procob ${PCOOPT} iname=$< oname=$(DIR_COBOL_SO)/cblopedb.cob
+	cob -Z $(DIR_COBOL_SO)/cblopedb.cob -o $@
+
+clean:
+	rm -rf main
+	rm -rf main_use_objectfile
+	rm -rf *.so *.o *.idy *.int *.gnt
+	cd ${DIR_C_SO}; rm -rf *.so *.o *.idy *.int *.gnt
+	cd ${DIR_C_PROC}; rm -rf *.so *.o *.idy *.int *.gnt
+	cd ${DIR_COBOL_SO}; rm -rf *.so *.o *.idy *.int *.gnt *.lis *.lst
+	for i in $$(ls ${DIR_C_PROC}/*.pc);do j=$${i%pc};echo $${j}c;rm -f $${j}c;done
+	for i in $$(ls ${DIR_COBOL_SO}/*.pco);do j=$${i%pco};echo $${j}cob;rm -f $${j}cob;done
+
+run: all
+	./main
+	./main_use_objectfile

@@ -1,0 +1,34 @@
+*
+* TEMPLATE: 
+*
+* Version: <project_name>
+* Date:    <date_input>
+* Source:  <source_name>
+* Source Information: 
+* <insert_here_any_information>
+*
+*
+
+ 01 TRANSCODE-INFO PIC X(70) VALUES "<project_name> <date_input>".
+ 01 TRANSCODE-LENGTH PIC 9(4) VALUE 256.
+ 01 TRANSCODE-SOURCE.
+*                               . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+    02 FILLER PIC X(32) VALUE X"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".
+    02 FILLER PIC X(32) VALUE X"202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f".
+    02 FILLER PIC X(32) VALUE X"404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f".
+    02 FILLER PIC X(32) VALUE X"606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f".
+    02 FILLER PIC X(32) VALUE X"808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f".
+    02 FILLER PIC X(32) VALUE X"a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf".
+    02 FILLER PIC X(32) VALUE X"c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf".
+    02 FILLER PIC X(32) VALUE X"e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff".
+
+ 01 TRANSCODE-CIBLE.
+*                               . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+    02 FILLER PIC X(32) VALUE X"000102039c09867f978d8e0b0c0d0e0f101112139d0a08871819928f1c1d1e1f".
+    02 FILLER PIC X(32) VALUE X"808182838485171b88898a8b8c050607909116939495960498999a9b14159e1a".
+    02 FILLER PIC X(32) VALUE X"20a0e2e4e0e1e3e5e7f15b2e3c282b2126e9eaebe8edeeefecdf5d242a293b5e".
+    02 FILLER PIC X(32) VALUE X"2d2fc2c4c0c1c3c5c7d1a62c255f3e3ff8c9cacbc8cdcecfcc603a2340273d22".
+    02 FILLER PIC X(32) VALUE X"d8616263646566676869abbbf0fdfeb1b06a6b6c6d6e6f707172aabae6b8c6a4".
+    02 FILLER PIC X(32) VALUE X"b57e737475767778797aa1bfd0dddeaea2a3a5b7a9a7b6bcbdbeac7cafa8b4d7".
+    02 FILLER PIC X(32) VALUE X"7b414243444546474849adf4f6f2f3f57d4a4b4c4d4e4f505152b9fbfcf9fa9f".    
+    02 FILLER PIC X(32) VALUE X"5cf7535455565758595ab2d4d6d2d3d530313233343536373839b3dbdcd9daff".

@@ -1,0 +1,46 @@
+       IDENTIFICATION   DIVISION.
+       PROGRAM-ID.      TEST.
+       ENVIRONMENT      DIVISION.
+       INPUT-OUTPUT     SECTION.
+       FILE-CONTROL.
+         SELECT OUT-FIXED-FILE
+            ASSIGN TO "TEST.DATA.F".
+         SELECT OUT-VARYING-FILE
+            ASSIGN TO "TEST.DATA.V".
+       DATA DIVISION.
+       FILE SECTION.
+         FD  OUT-FIXED-FILE
+             LABEL RECORD STANDARD
+             DATA RECORD FIXED-FILE-REC.
+         01  FIXED-FILE-REC.
+             03 GOODS-NAME-FIXED  PIC X(09).
+         FD  OUT-VARYING-FILE
+             LABEL RECORD STANDARD
+             DATA RECORD VARYING-FILE-REC
+             RECORD is VARYING in SIZE from 1 to 9.
+         01  VARYING-FILE-REC.
+             03 GOODS-NAME-VARYING  PIC X(09).
+       PROCEDURE   DIVISION.
+            OPEN OUTPUT OUT-FIXED-FILE.
+            OPEN OUTPUT OUT-VARYING-FILE. 
+
+            MOVE "A" TO GOODS-NAME-FIXED.
+            MOVE "A" TO GOODS-NAME-VARYING.
+            WRITE FIXED-FILE-REC.
+            WRITE VARYING-FILE-REC.
+
+
+            MOVE "AB" TO GOODS-NAME-FIXED.
+            MOVE "AB" TO GOODS-NAME-VARYING.
+            WRITE FIXED-FILE-REC.
+            WRITE VARYING-FILE-REC.
+
+            MOVE "ABC" TO GOODS-NAME-FIXED.
+            MOVE "ABC" TO GOODS-NAME-VARYING.
+            WRITE FIXED-FILE-REC.
+            WRITE VARYING-FILE-REC.
+
+            CLOSE OUT-FIXED-FILE.
+            CLOSE OUT-VARYING-FILE.
+            DISPLAY "Done".
+            STOP RUN.

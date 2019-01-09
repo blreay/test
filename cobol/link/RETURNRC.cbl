@@ -1,0 +1,36 @@
+*     *THIS PROGRAM IS USED TO TEST RETURN CODE
+*     *USAGE RETURN NUMERIC-PARM
+*     *  IT RETURN NUMERIC-PARM AS RETURN CODE
+*     *FOR EXAMPLE
+*     *  1. RETURNRC 
+*     *     RETURN 0
+*     *  2. RETURNRC 0008
+*     *     RETURN 8
+       IDENTIFICATION   DIVISION.
+       PROGRAM-ID.      RETURNRC.
+       ENVIRONMENT      DIVISION.
+       INPUT-OUTPUT     SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+         01  ARG        PIC X(50) VALUE SPACES.
+         01  RET-CODE   PIC 9(4)  VALUE 0.
+       LINKAGE SECTION.
+         01  PARM-BUFFER.
+             05  PARM-LENGTH      PIC S9(4) COMP-5. *> COMP => COMP-5
+             05  PARM-DATA        PIC X(256).
+       PROCEDURE DIVISION USING PARM-BUFFER.
+           IF PARM-LENGTH > 0
+              MOVE PARM-DATA(1:4) TO RET-CODE
+              DISPLAY "PARM-LENGTH=" PARM-LENGTH
+                      ",PARM-DATA=[" PARM-DATA(1:PARM-LENGTH) "]"
+           ELSE
+              DISPLAY "PARM-LENGTH=0"
+           END-IF
+
+           DISPLAY "PROGRAM RETURN: " RET-CODE.
+
+           MOVE RET-CODE TO RETURN-CODE.
+           GOBACK.
+      *    STOP RUN.
+
+

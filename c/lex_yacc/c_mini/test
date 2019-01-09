@@ -1,0 +1,11 @@
+int f() {
+	printf("%s", "hello");
+}
+int main () {
+	int a;
+	while ( 1 ) {
+		int b;	
+		b=f(3);
+	}
+	int d;
+}

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+export DD_DATAFILE=data/DATAFILE
+
+export DD_KSDSFILE=data/DATAF16IDX
+export DD_RRDSFILE=data/DATAF16REL
+export DD_ESDSFILE=data/DATAF16SEQ
+

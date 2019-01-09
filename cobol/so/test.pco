@@ -1,0 +1,59 @@
+      * ---------------------------------------------------
+      *   Module Name: COBOLDB2.cbl
+      *
+      *   Description: Sample COBOL with DB2 program.
+      *
+      *   Purpose: Performs a Select on the employee table
+      *   in the Sample database shipped with DB2.
+      *
+      *   COMPLILER OPTIONS (be sure to change the USERNAME and PASSWORD):
+      *   DATA,EXIT(ADEXIT(FTTDBKW)),sql('database sample user USERNAME using PASSWORD')
+      *
+      *   SYSLIB:
+      *   C:\Program Files\IBM\SQLLIB\INCLUDE\COBOL_A
+      *
+      *   ILINK OPTIONS:
+      *   /de db2api.lib
+      *
+      * ---------------------------------------------------
+       Identification Division.
+       Program-ID.  COBOLDB2.
+
+       Data Division.
+
+      *Make sure you have SQLCA included in Working-Storage
+       Working-Storage Section.
+            EXEC SQL INCLUDE SQLCA END-EXEC.
+      *EXEC SQL INCLUDE COURSERCD END-EXEC.
+
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+      *Data structure to store the Firstname of the employee
+       01 Program-pass-fields.
+          05 gdgbasename Pic x(30).
+           EXEC SQL END DECLARE SECTION END-EXEC.
+
+       Procedure Division.
+      *A Connection to the database must be made!
+      *     EXEC SQL CONNECT TO sample END-EXEC.
+      *EXEC SQL CONNECT TO db2linux user db2svr using db2svr END-EXEC.
+
+      *Performs a SQL SELECT to get the firstname of the employee
+      *with the employee number of 10.
+            EXEC SQL SELECT GDG_MAX_GEN INTO :gdgbasename
+            FROM gdg_define END-EXEC.
+
+      *Displays the firstname we pulled from the Sample database.
+           Display "Firstname"
+           Display "========="
+           Display gdgbasename
+           Display "========="
+           Display " "
+      *Displays the status of the SQL statements
+           Display SQLCA
+           Display "========="
+           Display SQLCODE of SQLCA
+           Display SQLERRMC of SQLCA
+      *    Display SQLSTATE of SQLCA
+           Display SQLERRMC of SQLCA
+
+           Goback.

@@ -1,0 +1,405 @@
+         CBL  APOST
+        IDENTIFICATION DIVISION.
+        PROGRAM-ID. MIRRIMSC.
+        AUTHOR. TUXEDO DEVELOPMENT.
+        ENVIRONMENT DIVISION.
+        CONFIGURATION SECTION.
+        DATA DIVISION.
+        WORKING-STORAGE SECTION.
+
+      *****************************************************
+      * CPI-Communications Pseudonym File in SYS1.SIEAHDR.H
+      *****************************************************
+        COPY ATBCMCOB.
+        COPY ATRSCOB.
+      *****************************************************
+      *****************************************************
+      * Log messages definitions
+      *****************************************************
+        01  LOGTIME PIC X(21).
+
+        01  LOGMSG.
+            05  LOG-TRAN PIC X(9) VALUE "MIRRIMSC ".
+            05  LOG-YEAR PIC X(2).
+            05  FILLER PIC X(1) VALUE "/".
+            05  LOG-MON PIC X(2).
+            05  FILLER PIC X(1) VALUE "/".
+            05  LOG-DAY PIC X(2).
+            05  FILLER PIC X(1) VALUE " ".
+            05  LOG-HOUR PIC X(2).
+            05  FILLER PIC X(1) VALUE ":".
+            05  LOG-MIN PIC X(2).
+            05  FILLER PIC X(1) VALUE ":".
+            05  LOG-SEC PIC X(2).
+            05  FILLER PIC X(1) VALUE " ".
+            05  LOG-ERROR.
+                07  LOG-ROUTINE PIC X(14).
+                07  FILLER PIC X(8) VALUE " FAILED(".
+                07  LOG-STATUS PIC 9(8).
+                07  FILLER PIC X(2) VALUE ") ".
+                07  LOG-ERR-TEXT PIC X(18).
+            05  FILLER REDEFINES LOG-ERROR.
+                07 LOG-TEXT PIC X(50).
+
+      ******************************************************
+      * 01  TP-STATUS PIC S9(8) COMP.
+      * 01  TP-STATUS2 PIC S9(8) COMP.
+
+        77  GU      PIC X(04) VALUE 'GU  '.
+        77  CHNG    PIC X(04) VALUE 'CHNG'.
+        77  ISRT    PIC X(04) VALUE 'ISRT'.
+        77  PURG    PIC X(04) VALUE 'PURG'.
+
+        01  REQUEST-MSG.
+            05  REQ-LL PIC 9(4) COMP VALUE 0.
+            05  REQ-ZZ PIC 9(4) COMP VALUE 0.
+            05  REQ-TRAN PIC X(8) VALUE SPACES.
+            05  FILLER PIC X(1) VALUE " ".
+            05  REQ-DATA PIC X(60) VALUE SPACES.
+
+        01  RESPONSE-MSG.
+            05  RSP-LL PIC 9(4) COMP VALUE 80.
+            05  RSP-ZZ PIC 9(4) COMP VALUE 0.
+            05  FILLER PIC X(1) VALUE " ".
+            05  RSP-DATA PIC X(1024) VALUE SPACES.
+
+        01  RECEIVE-FLAG PIC X(1).
+            88  CONTINUE-RECEIVE VALUE 'Y'.
+            88  SEND-STATE VALUE 'N'.
+
+        01  TMP-LEN PIC 9(4) COMP VALUE 0.
+        01  TMP-BUF PIC X(1024) VALUE SPACES.
+
+        77  IX PIC S9(4) COMP.
+        77  JX PIC S9(4) COMP.
+
+        LINKAGE SECTION.
+        01  IOPCB.
+            05  LTERM           PIC   X(08).
+            05  FILLER          PIC   X(02).
+            05  IOPCB-STATUS    PIC   X(02).
+            05  FILLER          PIC   X(28).
+
+      ******************************************************
+        PROCEDURE DIVISION USING IOPCB.
+      ******************************************************
+        MAIN.
+            PERFORM START-PROGRAM.
+            PERFORM INIT-CONVERSATION.
+            PERFORM SEND-DATA.
+            PERFORM RECEIVE-DATA.
+            PERFORM END-CONVERSATION.
+            PERFORM EXIT-PROGRAM.
+
+      ******************************************************
+      * Start program with command line args
+      ******************************************************
+        START-PROGRAM.
+            MOVE "Started" TO LOG-TEXT.
+            PERFORM DO-USERLOG.
+
+            CALL 'CBLTDLI' USING
+                GU
+                IOPCB
+                REQUEST-MSG.
+            IF IOPCB-STATUS NOT = SPACES
+                MOVE "GU" TO LOG-ROUTINE
+                MOVE IOPCB-STATUS TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            MOVE REQ-TRAN TO LOG-TRAN.
+            PERFORM VARYING IX FROM 13 BY 1
+                UNTIL REQUEST-MSG(IX:1) NOT = SPACE
+                    OR IX > REQ-LL
+            END-PERFORM.
+            MOVE IX TO JX.
+            PERFORM VARYING IX FROM IX BY 1
+                UNTIL REQUEST-MSG(IX:1) = SPACE
+                    OR IX > REQ-LL
+            END-PERFORM.
+
+            SUBTRACT JX FROM IX GIVING PARTNER-LU-NAME-LENGTH.
+      *     display "ix(" ix ")jx(" jx ")".
+      *     display "lu-len(" partner-lu-name-length ")".
+            IF PARTNER-LU-NAME-LENGTH = 0
+                MOVE "GU" TO LOG-ROUTINE
+                MOVE REQ-LL TO LOG-STATUS
+                MOVE "REQ-LL" TO LOG-ERR-TEXT
+                PERFORM DO-LOG-ERR
+            END-IF.
+            MOVE REQUEST-MSG(JX:PARTNER-LU-NAME-LENGTH)
+                TO PARTNER-LU-NAME.
+
+            PERFORM VARYING IX FROM IX BY 1
+                UNTIL REQUEST-MSG(IX:1) NOT = SPACE
+                    OR IX > REQ-LL
+            END-PERFORM.
+            MOVE IX TO JX.
+            PERFORM VARYING IX FROM IX BY 1
+                UNTIL IX > REQ-LL
+            END-PERFORM.
+            SUBTRACT JX FROM IX GIVING SEND-LENGTH.
+      *     display "ix(" ix ")jx(" jx ")".
+      *     display "msg-len(" send-length ")".
+            IF SEND-LENGTH = 0
+                MOVE "GU" TO LOG-ROUTINE
+                MOVE REQ-LL TO LOG-STATUS
+                MOVE "REQ-LL" TO LOG-ERR-TEXT
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            SUBTRACT 13 FROM JX.
+      *****************************************************
+      *  Issue a TPCALL
+      *****************************************************
+        INIT-CONVERSATION.
+            MOVE "MIRRORSI" TO SYM-DEST-NAME.
+            CALL 'CMINIT' USING
+                CONVERSATION-ID
+                SYM-DEST-NAME
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMINIT" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMSPLN' USING
+                CONVERSATION-ID
+                PARTNER-LU-NAME
+                PARTNER-LU-NAME-LENGTH
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSPLN" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            SET CM-MAPPED-CONVERSATION TO TRUE
+            CALL 'CMSCT' USING
+                CONVERSATION-ID
+                CONVERSATION-TYPE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSCT" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            EVALUATE REQ-TRAN(4:1)
+                WHEN '0'
+                    SET CM-NONE TO TRUE
+                WHEN '2'
+                    SET CM-SYNC-POINT TO TRUE
+                WHEN OTHER
+                    MOVE "CMSSL" TO LOG-ROUTINE
+                    MOVE "SYNC-LEVEL" TO LOG-ERR-TEXT
+                    PERFORM DO-LOG-ERR
+            END-EVALUATE.
+            CALL 'CMSSL' USING
+                CONVERSATION-ID
+                SYNC-LEVEL
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSST" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMALLC' USING
+                CONVERSATION-ID
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMALLC" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+        SEND-DATA.
+            DISPLAY "SEND(" SEND-LENGTH "):" REQ-DATA(JX:SEND-LENGTH).
+
+            CALL 'CMSEND' USING
+                CONVERSATION-ID
+                REQ-DATA(JX:SEND-LENGTH)
+                SEND-LENGTH
+                REQUEST-TO-SEND-RECEIVED
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSEND" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            SET CM-PREP-TO-RECEIVE-FLUSH TO TRUE.
+            CALL 'CMSPTR' USING
+                CONVERSATION-ID
+                PREPARE-TO-RECEIVE-TYPE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSPTR" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMPTR' USING
+                CONVERSATION-ID
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMPTR" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+        RECEIVE-DATA.
+            MOVE 0 TO RSP-LL.
+            MOVE LENGTH OF TMP-BUF TO REQUESTED-LENGTH.
+            PERFORM UNTIL SEND-STATE
+                CALL 'CMRCV' USING
+                    CONVERSATION-ID
+                    TMP-BUF
+                    REQUESTED-LENGTH
+                    DATA-RECEIVED
+                    RECEIVED-LENGTH
+                    STATUS-RECEIVED
+                    REQUEST-TO-SEND-RECEIVED
+                    CM-RETCODE
+                IF NOT (CM-OK OR CM-DEALLOCATED-NORMAL)
+                    MOVE "CMRCV" TO LOG-ROUTINE
+                    MOVE CM-RETCODE TO LOG-STATUS
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+      *         MOVE "CMRCV" TO LOG-ROUTINE
+      *         MOVE REQUEST-TO-SEND-RECEIVED TO LOG-STATUS
+      *         MOVE "REQUEST-TO-SEND-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE STATUS-RECEIVED TO LOG-STATUS
+      *         MOVE "STATUS-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE DATA-RECEIVED TO LOG-STATUS
+      *         MOVE "DATA-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+
+                IF NOT (CM-NO-DATA-RECEIVED OR
+                    CM-COMPLETE-DATA-RECEIVED)
+                    MOVE "CMRCV" TO LOG-ROUTINE
+                    MOVE DATA-RECEIVED TO LOG-STATUS
+                    MOVE "DATA-RECEIVED" TO LOG-ERR-TEXT
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+                EVALUATE TRUE
+                    WHEN CM-NO-STATUS-RECEIVED
+                    WHEN CM-DEALLOCATED-NORMAL OR CM-SEND-RECEIVED
+                        SET SEND-STATE TO TRUE
+                    WHEN CM-CONFIRM-RECEIVED
+                        CALL 'CMCFMD' USING
+                            CONVERSATION-ID
+                            CM-RETCODE
+                        IF NOT CM-OK
+                            MOVE "CMCFMD" TO LOG-ROUTINE
+                            MOVE CM-RETCODE TO LOG-STATUS
+                            PERFORM DO-LOG-ERR
+                        END-IF
+                    WHEN CM-CONFIRM-SEND-RECEIVED
+                        CALL 'CMCFMD' USING
+                            CONVERSATION-ID
+                            CM-RETCODE
+                        IF NOT CM-OK
+                            MOVE "CMCFMD" TO LOG-ROUTINE
+                            MOVE CM-RETCODE TO LOG-STATUS
+                            PERFORM DO-LOG-ERR
+                        END-IF
+                        SET SEND-STATE TO TRUE
+                    WHEN OTHER
+                        MOVE "CMRCV" TO LOG-ROUTINE
+                        MOVE STATUS-RECEIVED TO LOG-STATUS
+                        MOVE "STATUS-RECEIVED" TO LOG-ERR-TEXT
+                        PERFORM DO-LOG-ERR
+                END-EVALUATE
+
+                IF RECEIVED-LENGTH > 0
+                    SUBTRACT RSP-LL FROM LENGTH OF RSP-DATA GIVING
+                        TMP-LEN
+                    IF TMP-LEN > 0
+                        IF RECEIVED-LENGTH <= TMP-LEN
+                            MOVE RECEIVED-LENGTH TO TMP-LEN
+                        END-IF
+                        MOVE TMP-BUF(1:TMP-LEN) TO
+                            RSP-DATA(RSP-LL + 1:TMP-LEN)
+                        ADD TMP-LEN TO RSP-LL
+                    END-IF
+                    MOVE 0 TO RECEIVED-LENGTH
+                END-IF
+            END-PERFORM.
+
+            DISPLAY "RECV(" RSP-LL "):" RSP-DATA(1:RSP-LL).
+
+        END-CONVERSATION.
+            IF CM-SYNC-POINT
+                SET CM-DEALLOCATE-SYNC-LEVEL TO TRUE
+      *         SET CM-DEALLOCATE-ABEND TO TRUE
+                CALL 'CMSDT' USING
+                    CONVERSATION-ID
+                    DEALLOCATE-TYPE
+                    CM-RETCODE
+                IF NOT CM-OK
+                    MOVE "CMSDT" TO LOG-ROUTINE
+                    MOVE CM-RETCODE TO LOG-STATUS
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+                CALL 'CMDEAL' USING
+                    CONVERSATION-ID
+                    CM-RETCODE
+                IF NOT CM-OK
+                    MOVE "CMDEAL" TO LOG-ROUTINE
+                    MOVE CM-RETCODE TO LOG-STATUS
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+      *         CALL 'SRRCMIT' USING
+      *             ATRS-RETURN-CODE-CONST
+      *         IF NOT RR-OK
+      *             MOVE "SRRCMIT" TO LOG-ROUTINE
+      *             MOVE ATRS-RETURN-CODE-CONST TO LOG-STATUS
+      *             PERFORM DO-LOG-ERR
+      *         END-IF
+            END-IF.
+
+      *****************************************************
+      * Log messages to the userlog
+      *****************************************************
+        DO-USERLOG.
+            MOVE FUNCTION CURRENT-DATE TO LOGTIME.
+            MOVE LOGTIME(3:4) TO LOG-YEAR.
+            MOVE LOGTIME(5:2) TO LOG-MON.
+            MOVE LOGTIME(7:2) TO LOG-DAY.
+            MOVE LOGTIME(9:2) TO LOG-HOUR.
+            MOVE LOGTIME(11:2) TO LOG-MIN.
+            MOVE LOGTIME(13:2) TO LOG-SEC.
+            DISPLAY LOGMSG.
+
+        DO-LOG-ERR.
+            MOVE LOGMSG TO RSP-DATA.
+            ADD LENGTH OF LOGMSG, 5 GIVING RSP-LL.
+            CALL 'CBLTDLI' USING
+                ISRT
+                IOPCB
+                RESPONSE-MSG.
+            GOBACK.
+
+      *****************************************************
+      *Leave Application
+      *****************************************************
+        EXIT-PROGRAM.
+            ADD 5 TO RSP-LL.
+            CALL 'CBLTDLI' USING
+                ISRT
+                IOPCB
+                RESPONSE-MSG.
+
+            MOVE "Ended" TO LOG-TEXT.
+            PERFORM DO-USERLOG.
+            GOBACK.

@@ -1,0 +1,5 @@
+1. BDB cannot support multi-user access by default
+   see http://www.opencobol.org/archive/204.txt
+
+   In order to support multi-user access BDB, you need to activate BDB concurrency.
+   This is done by setting/exporting the environment variable "DB_HOME" to a directory that is read/writable for all users that should be able to access the files.

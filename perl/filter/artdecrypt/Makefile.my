@@ -1,0 +1,15 @@
+CC=gcc
+CPP=g++
+
+ALL=idea.o
+
+all: $(ALL)
+
+idea.o: idea.c
+	$(CC) -c $< -o $@
+
+encrypt: encrypt.c idea.o
+	$(CC) encrypt.c -o $@
+
+clean:
+	rm -rf *.o $(ALL)

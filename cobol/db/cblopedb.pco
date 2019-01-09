@@ -1,0 +1,67 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. cblopedb.
+*     * ========================================================
+*     * entry points:
+*     *  main entry    connection to database
+*     *  do_connect    connect to database
+*     *  do_disconnect disconnect from database
+*     *  do_rollback   rollbacks database
+*     *  do_commit     commits database 
+*     *  dbm_init:     init uwa and currencies
+*     *  dbm_clean:    close cursors and clean cursor info
+*     * ========================================================
+       DATA DIVISION.
+*     *
+*     * ========================================================
+*     *
+       WORKING-STORAGE SECTION.
+       77  VERS-NB PIC X(80) value
+          "@(#) VERSION: 1.1 Mar 25 2010: DB Access functions\".
+*     *
+		01 DISPLAY-VARIABLES.
+		05 D-CUSTCD PIC X(099).
+		05 D-CUSTNM PIC X(035).
+		01 D-USERNAME PIC X(010).
+		01 D-PASSWD PIC X(010).
+		01 D-DB-STRING PIC X(020).
+		01 D-TOTAL-QUERIED PIC 9(4) VALUE ZERO.
+
+       01 wcc-prog          pic x(80).
+       01 prog-ret-code     pic s9(4) comp-5 value zero.
+       01 mwlogin.
+          02 mwlogin-len pic S9(4) comp-5.
+          02 mwlogin-arr pic x(127).
+*     *
+*     * bug oracle if ORACLELOGIN > 127 alors @ORACLESID obligatoire
+*     * dans la chaine de login
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+             01 H-SQL             PIC X(128).
+             01 ORACLELOGIN       PIC X(127).
+				01 USERNAME PIC X(010).
+				01 PASSWD PIC X(010).
+				01 DB-STRING PIC X(020).
+				01 CUSTCD PIC X(099).
+				01 CUSTNM PIC X(099).
+           EXEC SQL END DECLARE SECTION END-EXEC.
+      
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      
+       PROCEDURE DIVISION.
+       MAIN-ENTRY section.
+       DEBUT.
+           display "begin to operate DB".
+*     *
+       LOGDB SECTION.
+       entry "cblopedbentry".
+       STRT-DO-CONNECT.
+		EXEC SQL SELECT GDG_BASE_NAME, GDG_MAX_GEN
+		INTO :CUSTCD, :CUSTNM
+		FROM gdg_define
+		END-EXEC.
+		
+		DISPLAY "SQLCODE: ", SQLCODE OF SQLCA.
+		DISPLAY "CUSTCD CUSTNM".
+		DISPLAY "-".
+		MOVE CUSTCD TO D-CUSTCD.
+		MOVE CUSTNM TO D-CUSTNM.
+		DISPLAY D-CUSTCD, " ", D-CUSTNM.

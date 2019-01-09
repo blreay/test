@@ -1,0 +1,23 @@
+## zzy aaa
+a=100;
+b=20;
+k=9;
+if((1>1)||(-9>-1))
+  for(i=0;i<=9;i=i+1)
+    print(i);
+else
+  if(3>1&&2>1) {
+    for(j=-1.1;j<=3;j++)
+      print(j);
+    for(jdd=1;jdd<=3;++jdd)
+      print(jdd);
+    while(k<=9) {
+      print(k++);
+      print(++k);
+    }
+  }
+#test
+print(a+b);
+
+rc=print(3);
+a=submit(JOBA);

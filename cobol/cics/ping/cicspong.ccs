@@ -1,0 +1,646 @@
+/*
+ * NAME:    cicspong.ccs
+ *
+ * VERSION: 1.1.3.1
+ *
+ *                                                         
+ *   (C) COPYRIGHT International Business Machines Corp.   
+ *   1993, 2013                                            
+ *   All Rights Reserved                                   
+ *   Licensed Materials - Property of IBM                  
+ *   5724-B44                                              
+ *                                                         
+ *   US Government Users Restricted Rights -               
+ *   Use, duplication or disclosure restricted by          
+ *   GSA ADP Schedule Contract with IBM Corp.              
+ *                                                         
+ *                                                                       
+ *            NOTICE TO USERS OF THE SOURCE CODE EXAMPLES                
+ *                                                                       
+ * INTERNATIONAL BUSINESS MACHINES CORPORATION PROVIDES THE SOURCE CODE  
+ * EXAMPLES, BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, AS IS          
+ * WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,            
+ * INCLUDING, BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF               
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE     
+ * RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOURCE CODE EXAMPLES,   
+ * BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, IS WITH YOU.  SHOULD     
+ * ANY PART OF THE SOURCE CODE EXAMPLES PROVE DEFECTIVE, YOU (AND NOT    
+ * IBM) ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR OR     
+ * CORRECTION.  THIS PROGRAM MAY BE USED, EXECUTED, COPIED, MODIFIED     
+ * AND DISTRIBUTED WITHOUT ROYALTY FOR THE PURPOSE OF DEVELOPING,        
+ * MARKETING, OR DISTRIBUTING.                                           
+ *                                                                       
+ *                                                                       
+ *
+ */
+ /*-------------------------------------------------------------------*/
+ /*                                                                   */
+ /*  PROGRAM NAME  : CICSPONG (Backend to CICSPING)                   */
+ /*                                                                   */
+ /*  PURPOSE : To Verify Basic CICS ISC Function                      */
+ /*                                                                   */
+ /*                                                                   */
+ /*                                                                   */
+ /*-------------------------------------------------------------------*/
+
+ /********************************************************************/
+ /* #includes                                                        */
+ /********************************************************************/
+
+  #include <cicstype.h>
+  #include <string.h>
+  #include <stdlib.h>
+  #include <stdio.h>
+
+
+ /********************************************************************/
+ /* #defines                                                         */
+ /********************************************************************/
+
+  #define SC_TYPE  0      /* Start_Code Type = Q, S, T, U */
+  #define SC_DATA  1      /* Start_Code Data              */
+
+  #define TC_TYPE  0      /* Term_Code Type               */
+  #define TC_MODEL 1      /* Term_Code Data               */
+
+ /********************************************************************/
+ /* Procedure Declarations                                           */
+ /********************************************************************/
+
+  static void Resp_Error (char*);
+  static void State_Error (char*, cics_slong_t, cics_slong_t);
+  static void Length_Error (char*, cics_sshort_t, cics_sshort_t);
+  static void cics_time (void);
+  static void Output_Text (cics_char_t*);
+ 
+  static void Operating_Environment (void);
+  static int  Invocation_Details (void);
+  static void Display_Parameters (void);
+  static void Backend_Instance_62 (void) ;
+
+ /********************************************************************/
+ /* Structures                                                       */
+ /********************************************************************/
+
+ struct log_struct
+ {
+      cics_char_t program [8];
+      cics_char_t zz0;
+      cics_char_t applid [8];
+      cics_char_t zz1;
+      cics_char_t msg [80];
+ };
+
+ /********************************************************************/
+ /* Global Variables                                                 */
+ /********************************************************************/
+
+  cics_char_t Start_Code[2] = "00";       /* Start Code    */
+  cics_char_t Term_Code[2]  = "00";       /* Terminal Code */
+
+  cics_char_t abstime [8];
+  cics_char_t time_msg [9];
+
+
+  struct log_struct CSMT_log = {"CICSPONG", ' ', "", ' ', ""};
+  cics_slong_t  resp = 0 ;
+  cics_char_t  Local_Sysid [5] = "" ;
+
+
+ /********************************************************************/
+ /* Procedure    : Operating_Environment                             */
+ /* Function     : To Determine the system and release that          */
+ /*                we are running under                              */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Operating_Environment()
+    {
+      cics_char_t Text_Buffer[80];
+      cics_char_t Temp_Text[100];
+      cics_ubyte_t This_OPSYS = '\0';
+      cics_char_t  This_RELEASE [5] = "" ;
+
+      EXEC CICS ASSIGN
+                APPLID(CSMT_log.applid)
+                SYSID(Local_Sysid);
+
+      EXEC CICS INQUIRE SYSTEM
+                OPSYS(&This_OPSYS)
+                RELEASE(This_RELEASE);
+
+      Output_Text("Q01 - Pong Initiation");
+
+      strcpy(Temp_Text,"Q02 - INQUIRE OPSYS='");
+      Temp_Text [21] = (char)This_OPSYS;
+      Temp_Text [22] = 0;
+      strcat(Temp_Text,"', RELEASE='");
+      strncat(Temp_Text,This_RELEASE,4);
+      strcat(Temp_Text,"'");
+      Output_Text(Temp_Text);
+
+    } /* End of Operating_Environment */
+
+ /********************************************************************/
+ /* Procedure    : Invocation_Details                                */
+ /* Function     : To determine how we were started                  */
+ /* Input        : None                                              */
+ /* Returns      : int to designate invocation mode                  */
+ /********************************************************************/
+
+  static int Invocation_Details()
+    {
+      cics_char_t  Text_Buffer [80] ;
+      cics_char_t  Temp_Text [100] ;
+
+      EXEC CICS ASSIGN
+                TERMCODE(Term_Code)
+                RESP(resp);
+     /* Do double assign since 6000 does not fill in fields if INVREQ */
+
+      EXEC CICS ASSIGN
+                STARTCODE(Start_Code)
+                RESP(resp);
+
+      sprintf(Temp_Text,"Q03 - Startcode(%c%c) Term_Code (%02x%02x)",
+                               Start_Code [SC_TYPE],
+                               Start_Code [SC_DATA],
+                               (unsigned char)Term_Code [TC_TYPE],
+                               (unsigned char)Term_Code [TC_MODEL]);
+      strcat(Temp_Text," SYSID=");
+      strncat(Temp_Text,Local_Sysid,4);
+      Output_Text(Temp_Text);
+
+       switch(Start_Code[SC_TYPE])
+         {
+           case 'Q': /* Transient data trigger  */
+             switch(Start_Code[SC_DATA])
+               {
+                  case 'D':
+                    return(21);
+                  default:
+                    Output_Text("E03 - ERROR - StartCode Data unknown");
+                    Output_Text(Temp_Text);
+                    return(-2);
+               }
+
+           case 'S': /* START command ... */
+             switch(Start_Code[SC_DATA])
+               {
+                  case ' ': /* ... without DATA */
+                    return(31);
+                  case 'D': /* ... with DATA */
+                    return(32);
+                  default:
+                    Output_Text("E03 - ERROR - StartCode Data unknown");
+                    Output_Text(Temp_Text);
+                    return(-3);
+                }
+
+           case 'T': /* Terminal or sess Initiated  */
+             switch(Start_Code[SC_DATA])
+               {
+                  case 'D': /* ... with DATA */
+                    switch((unsigned char)Term_Code[TC_TYPE])
+                      {
+                        case 0x91:
+                          Output_Text("Q04 - TermCode Type = '0x91'");
+                          return(3270);
+                        case 0xc0:
+                          Output_Text("Q04 - TermCode Type = '0xc0'");
+                          return(62);
+                          /*30 for ASCII on OS2*/case 0x30:
+                          Output_Text("Q04 - TermCode Type = '0x30'");
+                          return(62);
+                        default:
+                          Output_Text("E04 - ERROR - Termcode Type"   \
+                                      " unknown");
+                          return(-4);
+                      }
+                  default: return(-5);
+                }
+
+           case 'U': /* User attached task */
+             switch(Start_Code[SC_DATA])
+               {
+                  case ' ':
+                    return(71);
+                  default:
+                    Output_Text("E03 - ERROR - StartCode Data unknown");
+                    return(-6);
+               }
+
+           case 'D': /* DPL ... */
+             switch(Start_Code[SC_DATA])
+               {
+                  case ' ': /* ... without Syncpoint allowed */
+                    return(11);
+                  case 'S': /* ... with Syncpoint allowed */
+                    return(12);
+                  default:
+                    Output_Text("E03 - ERROR - StartCode Data unknown");
+                    return(-1);
+                }
+
+           default:
+             Output_Text("E03 - ERROR - StartCode Type unknown");
+             return(-7);
+
+         }  /* of switch statement */
+
+    } /* End of Invocation_Details */
+
+ /********************************************************************/
+ /* Procedure    : Display_Parameters                                */
+ /* Function     : To Display Parameters to be used for this         */
+ /*                invocation of CICSPONG                            */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Display_Parameters()
+    {
+      cics_char_t Temp_Text[80];
+      /*
+      Output_Text("PONG - Display_Parameters");
+      */
+    } /* End of Display_Parameters */
+
+ /********************************************************************/
+ /* Procedure    : Backend_Instance_62                               */
+ /* Function     : Runs as Back End of DTP conversation              */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Backend_Instance_62()
+    {
+      cics_char_t  Temp_Text[80];
+      cics_char_t  Receive_Data[100];
+      cics_char_t  Send_Data[100];
+      cics_sshort_t Receive_Length;
+      cics_slong_t  State;
+      int  DTP_Success_Count=0;
+      int  DTP_Error_Count=0;
+
+
+      Receive_Length=100;
+
+      EXEC CICS RECEIVE
+           INTO(Receive_Data)
+           LENGTH(Receive_Length)
+           STATE(State)
+           RESP(resp);
+
+      if ( (resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC))
+        || (State!=dfhvalue(CONFRECEIVE)) || (Receive_Length!=17) )
+      {
+          DTP_Error_Count++;
+          sprintf(Temp_Text, "E11 ERROR - RECEIVE ");
+          if ((resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC)))
+              Resp_Error(Temp_Text);
+          if (Receive_Length!=17)
+              Length_Error(Temp_Text,27,Receive_Length);
+          if (State!=dfhvalue(CONFRECEIVE))
+              State_Error(Temp_Text,dfhvalue(CONFRECEIVE),State);
+      }
+      else DTP_Success_Count++;
+
+      EXEC CICS ISSUE
+           CONFIRMATION
+           STATE(State)
+           RESP(resp);
+
+
+      if ( (resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC))
+        || (State!=dfhvalue(RECEIVE)) )
+      {
+          DTP_Error_Count++;
+          sprintf(Temp_Text, "E12 ERROR - ISSUE CONFIRM ");
+          if ((resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC)))
+              Resp_Error(Temp_Text);
+          if (State!=dfhvalue(RECEIVE))
+              State_Error(Temp_Text,dfhvalue(RECEIVE),State);
+      }
+      else DTP_Success_Count++;
+
+      Receive_Length=100;
+
+      EXEC CICS RECEIVE
+           INTO(Receive_Data)
+           LENGTH(Receive_Length)
+           STATE(State)
+           RESP(resp);
+
+      if ( (resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC))
+        || (State!=dfhvalue(SEND)) || (Receive_Length!=27) )
+      {
+          DTP_Error_Count++;
+          sprintf(Temp_Text, "E13 ERROR - RECEIVE ");
+          if ((resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC)))
+              Resp_Error(Temp_Text);
+          if (Receive_Length!=27)
+              Length_Error(Temp_Text,27,Receive_Length);
+          if (State!=dfhvalue(SEND))
+              State_Error(Temp_Text,dfhvalue(SEND),State);
+      }
+      else DTP_Success_Count++;
+
+
+      Receive_Length=17;
+
+      EXEC CICS SEND
+           FROM(Send_Data)
+           LENGTH(Receive_Length)
+           LAST
+           WAIT
+           STATE(State)
+           RESP(resp);
+
+      if ( (resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC))
+        || (State!=dfhvalue(FREE)) )
+      {
+          DTP_Error_Count++;
+          sprintf(Temp_Text, "E14 ERROR - SEND LAST WAIT ");
+          if ((resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC)))
+              Resp_Error(Temp_Text);
+          if (State!=dfhvalue(FREE))
+              State_Error(Temp_Text,dfhvalue(FREE),State);
+      }
+
+      EXEC CICS FREE 
+                STATE(State)
+                RESP(resp);
+      if ((resp!=dfhresp(NORMAL)) || (State!=0))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E15 ERROR - FREE ");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (State!=0)
+               State_Error(Temp_Text,0,State);
+      }
+      else DTP_Success_Count++;
+
+
+    } /* End of Backend_Instance_62 */
+
+/**********************************************************************
+ * Function name: return_to_cics                                      *
+ * Description:   Returns to CICS                                     *
+ * Parameters:    None                                                *
+ * Returns:       None                                                *
+ **********************************************************************/
+
+  static void return_to_cics(void)
+    {
+
+      Output_Text("Q06 - Pong Termination");
+      EXEC CICS RETURN;
+    }
+/**********************************************************************
+ * Function name: cics_time                                           *
+ * Description:   gets the time                                       *
+ * Returns:       time_msg as 8 cics_char_t string                   *
+ **********************************************************************/
+
+  static void cics_time ()
+    {
+      EXEC CICS ASKTIME ABSTIME(abstime);
+      EXEC CICS FORMATTIME ABSTIME(abstime)
+                           TIME(time_msg)
+                           TIMESEP;
+      time_msg [8]='\0';
+    }
+
+
+ /********************************************************************/
+ /* Procedure    : Output_Text                                       */
+ /* Reference    : Code and Design by Adrian Thomson 1994            */
+ /* Function     : To Display text to CSMT                           */
+ /* Input        : Text to be displayed                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Output_Text(char *Text )
+    {
+      cics_sshort_t Text_Length = 80 ;
+
+      cics_time();
+      sprintf (CSMT_log.msg, "%s %s",time_msg,Text);
+
+      EXEC CICS WRITEQ TD QUEUE("CSMT")
+                          FROM(&CSMT_log)
+                          LENGTH(Text_Length);
+
+      /* clear log structure */
+      memset(CSMT_log.msg, ' ', 79);
+      CSMT_log.msg [79]='\0';
+
+    } /* End of Output_Text */
+
+ /********************************************************************/
+ /* Procedure    : Main                                              */
+ /*                                                                  */
+ /* Function     : To call all sub-procedures                        */
+ /*                                                                  */
+ /* Input        : None                                              */
+ /*                                                                  */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  int main( void )
+  {
+    cics_char_t Temp_Text[80];
+    int Total_Error_Count=0;
+    int Invocation_Type;
+
+    EXEC CICS ADDRESS EIB(dfheiptr);
+
+    Operating_Environment();
+    Invocation_Type = Invocation_Details();
+    Display_Parameters();
+    /*
+    sprintf(Temp_Text,"PONG - Invocation Type = %d",Invocation_Type);
+    Output_Text(Temp_Text);
+    */
+    switch(Invocation_Type)
+    {
+     case 11:
+     Output_Text("Q05 - Executing as DPL Backend (No Sync)");
+     break;
+
+     case 12:
+     Output_Text("Q05 - Executing as DPL Backend (With Sync)");
+     EXEC CICS SYNCPOINT
+           RESP(resp);
+      if (resp!=dfhresp(NORMAL))
+      {
+          sprintf(Temp_Text, "E05 ERROR - SYNCPOINT");
+          Resp_Error(Temp_Text);
+      }
+     break;
+
+     case 31:
+     Output_Text("Q05 - Executing as AP Request (No Data)");
+     break;
+
+     case 32:
+     Output_Text("Q05 - Executing as AP Request (With Data)");
+     break;
+
+     case 3270:
+     Output_Text("Q05 - Executing as 3270 Initiation");
+     return_to_cics();
+     break;
+
+     case 62:
+     Output_Text("Q05 - Executing as DTP Backend");
+     Backend_Instance_62();
+     break;
+
+     default:
+     Output_Text("E02 - ERROR - Initiation Type unknown");
+     sprintf(Temp_Text,"PONG - Startcode(%c%c) Termcode(%02x%c)",
+                               Start_Code[SC_TYPE],
+                               Start_Code[SC_DATA],
+                               (unsigned char)Term_Code[TC_TYPE],
+                               (unsigned char)Term_Code[TC_MODEL]);
+     Output_Text(Temp_Text);
+     break;
+
+    }
+
+    return_to_cics();
+
+  } /* End of main */
+
+
+/********************************************************************** 
+ * Function name: Resp_Error                                          * 
+ * Description:   Handles unexpected responses                        * 
+ * Inputs:        Error msg string                                    * 
+ * Returns:       None                                                * 
+ **********************************************************************/
+                                                                        
+  static void Resp_Error (char* Text)                                   
+    {
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+      cics_slong_t  resp_save = resp; 
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer); 
+                                                                        
+      switch (resp_save)                                                
+      /* then put out message for the error */
+      {                        
+          case dfhresp(ERROR):                                          
+               sprintf (Text_Buffer+10, "- ERROR");
+               break;                                                   
+          case dfhresp(IOERR):                                          
+               sprintf (Text_Buffer+10, "- IOERR, abending Test");
+               Output_Text(Text_Buffer); 
+               EXEC CICS ABEND ABCODE("IOER");
+               break;
+          case dfhresp(ISCINVREQ):
+               sprintf (Text_Buffer+10, "- ISCINVREQ");
+               break;                                                   
+          case dfhresp(INVREQ):                                         
+               sprintf (Text_Buffer+10, "- INVREQ");
+               break;                                                   
+          case dfhresp(ITEMERR):                                        
+               sprintf (Text_Buffer+10, "- ITEMERR");
+               break;                                                   
+          case dfhresp(LENGERR):                                        
+               sprintf (Text_Buffer+10, "- LENGERR");
+               break;                                                   
+          case dfhresp(NOSPACE):                                        
+               sprintf (Text_Buffer+10, "- NOSPACE");
+               break;                                                   
+          case dfhresp(NOTALLOC):                                       
+               sprintf (Text_Buffer+10, "- NOTALLOC");
+               break;                                                   
+          case dfhresp(NOTAUTH):                                        
+               sprintf (Text_Buffer+10, "- NOTAUTH");
+               break;                                                   
+          case dfhresp(PGMIDERR):                                       
+               sprintf (Text_Buffer+10, "- PGMIDERR");
+               break;                                                   
+          case dfhresp(QIDERR):                                         
+               sprintf (Text_Buffer+10, "- QIDERR");
+               break;                                                   
+          case dfhresp(ROLLEDBACK): 
+               sprintf (Text_Buffer+10, "- ROLLEDBACK");
+               break;                                                   
+          case dfhresp(SIGNAL):                                         
+               sprintf (Text_Buffer+10, "- SIGNAL");
+               break;                                                   
+          case dfhresp(SYSIDERR):                                       
+               sprintf (Text_Buffer+10, "- SYSIDERR");
+               Output_Text(Text_Buffer);
+               return_to_cics();
+               break;                                                   
+          case dfhresp(TERMERR):                                        
+               sprintf (Text_Buffer+10, "- TERMERR");
+               break;                                                   
+            default:
+               sprintf (Text_Buffer+10, "- EIBRESP(%ld)", resp_save);
+               break;
+
+      }
+                                                                        
+      Output_Text(Text_Buffer);
+    }
+
+/********************************************************************** 
+ * Function name: State_Error                                         * 
+ * Description:   DTP State error handler                             * 
+ * Inputs:        Expected state and returned state                   * 
+ * Returns:       None                                                * 
+ **********************************************************************/
+                                                                        
+  static void State_Error (char* Text,
+           cics_slong_t Exp_state,
+           cics_slong_t Ret_State)
+    {                                                                   
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer);
+
+      /* Then tell the user what state was wrong */
+      sprintf (Text_Buffer+10,
+               "- Expected state %ld returned state %ld",
+               Exp_state,Ret_State);
+      Output_Text(Text_Buffer);                                         
+    
+      /* Now lets get out of here */
+      EXEC CICS ABEND ABCODE("STAT");
+    }
+
+
+/********************************************************************** 
+ * Function name: Length_Error                                        * 
+ * Description:   DTP Length error handler                            * 
+ * Inputs:        Expected length and actual length                   * 
+ * Returns:       None                                                * 
+ **********************************************************************/
+                                                                        
+  static void Length_Error (char          * Text,
+                            cics_sshort_t   Exp_Length, 
+                            cics_sshort_t   Act_Length)
+    {  
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer);
+
+      sprintf(Text_Buffer+10,
+              "- Expected LENGTH(%d) actual LENGTH(%d)",
+              Exp_Length,Act_Length);
+      Output_Text(Text_Buffer);
+    }                                                                   

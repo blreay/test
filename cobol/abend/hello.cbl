@@ -1,0 +1,9 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. HELLO.
+       AUTHOR. LIPENG.
+      
+       PROCEDURE DIVISION.
+       P-START.
+          DISPLAY 'HELLO COBOL WORD'.
+       P-GOBACK.
+          GOBACK.

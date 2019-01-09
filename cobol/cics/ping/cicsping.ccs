@@ -1,0 +1,1144 @@
+
+/*
+ * NAME:    cicsping.ccs
+ *
+ * VERSION: 1.1.1.1
+ *
+ *                                                         
+ *   (C) COPYRIGHT International Business Machines Corp.   
+ *   1993, 2013                                            
+ *   All Rights Reserved                                   
+ *   Licensed Materials - Property of IBM                  
+ *   5724-B44                                              
+ *                                                         
+ *   US Government Users Restricted Rights -               
+ *   Use, duplication or disclosure restricted by          
+ *   GSA ADP Schedule Contract with IBM Corp.              
+ *                                                         
+ *                                                                       
+ *            NOTICE TO USERS OF THE SOURCE CODE EXAMPLES                
+ *                                                                       
+ * INTERNATIONAL BUSINESS MACHINES CORPORATION PROVIDES THE SOURCE CODE  
+ * EXAMPLES, BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, AS IS          
+ * WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,            
+ * INCLUDING, BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF               
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE     
+ * RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOURCE CODE EXAMPLES,   
+ * BOTH INDIVIDUALLY AND AS ONE OR MORE GROUPS, IS WITH YOU.  SHOULD     
+ * ANY PART OF THE SOURCE CODE EXAMPLES PROVE DEFECTIVE, YOU (AND NOT    
+ * IBM) ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR OR     
+ * CORRECTION.  THIS PROGRAM MAY BE USED, EXECUTED, COPIED, MODIFIED     
+ * AND DISTRIBUTED WITHOUT ROYALTY FOR THE PURPOSE OF DEVELOPING,        
+ * MARKETING, OR DISTRIBUTING.                                           
+ *                                                                       
+ *                                                                       
+ *
+ */
+ /*-------------------------------------------------------------------*/
+ /*                                                                   */
+ /*  PROGRAM NAME  : CICSPING (Frontend to CICSPONG)                  */
+ /*                                                                   */
+ /*  PURPOSE : To Verify Basic CICS ISC Function                      */
+ /*                                                                   */
+ /*                                                                   */
+ /*  INVOCATION :                                                     */
+ /*    By Transaction PING                                            */
+ /*    Syntax PING <sysid> <test>                                     */
+ /*     i.e PING ISC1     - run all tests to ISC1                     */
+ /*         PING ISC1 1   - run only test 1 (FS TS) to ISC1           */
+ /*         PING ISC1 2   - run only test 2 (DPL) to ISC1             */
+ /*         PING ISC1 3   - run only test 3 (AP) to ISC1              */
+ /*         PING ISC1 4   - run only test 4 (DTP) to ISC1             */
+ /*         PING 2        - run test 2 locally                        */
+ /*                                                                   */
+ /*                                                                   */
+ /*------------------------------------------------------------------ */
+
+ /********************************************************************/
+ /* #includes                                                        */
+ /********************************************************************/
+
+  #include <cicstype.h>
+  #include <string.h>
+  #include <stdlib.h>
+  #include <stdio.h>
+
+ /********************************************************************/
+ /* #defines                                                         */
+ /********************************************************************/
+
+  #define InsertCursor            '\x13'     /* 3270 Insert cursor   */
+  #define ebcdic_ProtectAttribute '\xe4'     /* 3270 Protected Attr  */
+  #define ascii_ProtectAttribute  '\x55'     /* 3270 Protected Attr  */
+
+
+
+ /********************************************************************/
+ /* Procedure Declarations                                           */
+ /********************************************************************/
+
+  static void  Output_Text (char*);
+  static void  Resp_Error (char*);
+  static void  State_Error (char*, cics_slong_t, cics_slong_t);
+  static void  Length_Error (char*, cics_sshort_t, cics_sshort_t);
+  static void  cics_time (void);
+
+  static void  Display_Parameters (void);
+  static void  Process_Startup_Parameters (void);
+
+  static int   Perform_FS_Tests (void);
+  static int   Perform_DPL_Tests (void);
+  static int   Perform_DTP_Tests (void);
+  static int   Perform_AP_Tests  (void);
+  static void  Display_Test_Results (int);
+  static void  return_to_cics (void);
+
+ /********************************************************************/
+ /* Structures                                                       */
+ /********************************************************************/
+
+struct screen_struct
+{
+     cics_char_t sf;
+     cics_char_t attr;
+     cics_char_t display [160];
+};
+
+struct log_struct
+{
+     cics_char_t program [8];
+     cics_char_t filler0;
+     cics_char_t applid [8];
+     cics_char_t filler1;
+     cics_char_t msg [80];
+};
+
+
+ /********************************************************************/
+ /* Global Variables                                                 */
+ /********************************************************************/
+
+  cics_char_t Start_Code [2] = "00";       /* Start Code    */
+  cics_char_t Term_Code [2]  = "00";       /* Terminal Code */
+  cics_char_t ascii_sba [4]  = {'\x11', '\x20', '\x41', '\x13'};
+  cics_char_t ebcdic_sba [4] = {'\x11', '\x40', '\xC1', '\x13'};
+  cics_char_t sba [4];                     /* 3270 set buffer address */
+  cics_char_t ProtectAttribute ;           /* 3270 Protect Attribute */
+
+  cics_char_t Local_Sysid [5]  = "" ;
+  cics_char_t Target_Sysid [5] = "" ;
+
+  cics_ubyte_t This_OPSYS = '\0';          /* local OPSYS */
+  cics_char_t  This_RELEASE [5] = "" ;     /* local cics release */
+
+  cics_sshort_t scrnwd = 80;
+  cics_sshort_t len_out = 79;
+  cics_slong_t resp=0;
+
+  cics_char_t abstime [8];
+  cics_char_t time_msg [9];
+
+  static char Temp_Text [80];              /* global text buffer */
+  cics_char_t Tranid_Data [80];            /* Test input */
+  cics_char_t Test_Num = ' ';              /* Test number */
+
+  static int Total_Error_Count = 0;
+  static int Total_Success_Count = 0;
+
+  struct screen_struct output_screen = {'\x1d', ' ', ""};
+  struct log_struct CSMT_log = {"CICSPING", ' ', "", ' ', ""};
+
+ /********************************************************************/
+ /* Procedure    : Process_Startup_Parameters                        */
+ /* Function     : To Determine how the transaction was initiated    */
+ /*                and process any parameters supplied               */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Process_Startup_Parameters()
+    {
+
+      cics_sshort_t Text_Length = 80;
+      cics_char_t Text_Buffer [80];
+
+      /* initialise storage */
+      memset(Text_Buffer, ' ', 79);
+      Text_Buffer [79] = '\0';
+
+      EXEC CICS ADDRESS EIB(dfheiptr);
+
+      EXEC CICS INQUIRE SYSTEM
+                OPSYS(&This_OPSYS)
+                RELEASE(This_RELEASE);
+
+      /* if ASCII opsys use ASCII 3270 cursor positioning*/
+      if ((This_OPSYS == 'P') || (This_OPSYS == 'A') ||
+          (This_OPSYS == 'H') || (This_OPSYS == 'O') ||
+          (This_OPSYS == 'S') || (This_OPSYS == 'L') ||
+          (This_OPSYS == 'N'))
+      {
+          strncpy(sba, ascii_sba, 4);
+          output_screen.attr = '\x48';
+          ProtectAttribute = ascii_ProtectAttribute;
+      }
+      else
+      {
+          strncpy(sba, ebcdic_sba, 4);
+          output_screen.attr = '\xc8';
+          ProtectAttribute = ebcdic_ProtectAttribute;
+      }
+
+      EXEC CICS ASSIGN
+                APPLID(CSMT_log.applid)
+                SCRNWD(scrnwd)
+                STARTCODE(Start_Code)
+                TERMCODE(Term_Code)
+                SYSID(Local_Sysid);
+
+      /* initialise target sysid to local */
+      Target_Sysid [4] = '\0';
+      Local_Sysid [4] = '\0';
+      strcpy(Target_Sysid, Local_Sysid);
+
+     /* Handle input from terminal or from a START */
+      if (Start_Code [0] == 'S')
+      {
+           EXEC CICS RETRIEVE
+                     INTO(Text_Buffer)
+                     LENGTH(Text_Length);
+      }
+      else
+      {
+           EXEC CICS RECEIVE
+                     INTO(Text_Buffer)
+                     LENGTH(Text_Length);
+      }
+
+     /* Check if screen input is new or modified */
+     /* If modified need to jump 3 bytes to skip sba */
+
+       if (!(memcmp(Text_Buffer, sba, 3)))
+       {
+          memcpy(Text_Buffer, Text_Buffer+3, (size_t)Text_Length);
+       }
+
+
+     /* Save Tranid */
+     strncpy(Tranid_Data, Text_Buffer, 
+                  (size_t)Text_Length);
+     Tranid_Data [Text_Length] = '\0';
+
+     /* if a 3270 terminal resend tranid back to the screen */
+     /* and position InsertCursor for new line              */
+     if ((Term_Code [0] > '\x90') &&
+         (Term_Code [0] < '\xa0'))
+     {
+          strncpy(output_screen.display, Text_Buffer, 
+                                 (size_t)Text_Length);
+          len_out = (cics_sshort_t) (scrnwd + 3);
+
+          output_screen.display [scrnwd - 2] = InsertCursor;
+          EXEC CICS SEND FROM(&output_screen)
+                         LENGTH(len_out)
+                         ERASE;
+     }
+
+      Output_Text("P01 PING Starting");
+
+     /* get test character option */
+     /* 012345678901  0123456   0123456789 */
+     /* ping xxxx y | ping y  | ping xxxx  */
+
+      if ((Text_Buffer [4]  != ' ')   ||
+          (Text_Buffer [9]  != ' ')   ||
+          (Text_Buffer [11] != ' ')   ||
+          (Text_Buffer [5]  == ' ')   ||
+          (Text_Buffer [5]  == '?'))
+      {
+           Total_Error_Count++;
+           Output_Text("E01 ERROR  - Transid parsing failed");
+           Output_Text("E01 SYNTAX - PING <SYSID> <n>");
+           Output_Text("              SYSID = 4char sysid ");
+           Output_Text("              n = Test Number ");
+           Output_Text("             '1' = Function Shipping ");
+           Output_Text("             '2' = Distributed Program Link ");
+           Output_Text("             '3' = Asynchronous Processing ");
+           Output_Text("             '4' = DTP ");
+           Output_Text("             ' ' = All tests ");
+           Output_Text("        e.g. PING ISC3 1");
+           return_to_cics();
+      }
+      else
+      {
+           if ((Text_Buffer [5] != ' ') &&
+               (Text_Buffer [10] != ' '))
+           {
+                Test_Num = Text_Buffer [10];       /* sysid & testnum */
+           }
+
+           if (Text_Buffer [6] != ' ')
+           {
+                strncpy(Target_Sysid, Text_Buffer + 5, 4);  /* sysid */
+           }
+           else
+           {
+                Test_Num = Text_Buffer [5];           /* testnum only */
+           }
+      }
+      sprintf(Temp_Text,
+              "P02 Startcode(%c%c) Term_Code(%2x%2x) local SYSID(%4s)",
+                               Start_Code [0],
+                               Start_Code [1],
+                               (unsigned char)Term_Code [0],
+                               (unsigned char)Term_Code [1],
+                               Local_Sysid);
+      Output_Text(Temp_Text);
+
+     } /* End of Process_Startup_Parameters */
+
+
+ /********************************************************************/
+ /* Procedure    : Display_Parameters                                */
+ /* Function     : To Display Parameters to be used for this         */
+ /*                invocation of CICSPING and check SYSID            */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Display_Parameters()
+    {
+      cics_slong_t  Conn_Status = 0 ;
+
+      sprintf(Temp_Text,"P03 INQUIRE OPSYS='%c' RELEASE='%4s'",
+                         (char)This_OPSYS,
+                         This_RELEASE);
+          Output_Text(Temp_Text);
+
+      if (!strncmp(Target_Sysid,Local_Sysid,4))
+        {
+          sprintf(Temp_Text,"P04 Test execution local with SYSID=%4s",
+                                Local_Sysid);
+          Output_Text(Temp_Text);
+        }
+      else
+        {
+          sprintf(Temp_Text,"P04 Test execution remote to SYSID=%4s",
+                                Target_Sysid);
+          Output_Text(Temp_Text);
+        }
+
+      if (strcmp(Target_Sysid,Local_Sysid)!=0)
+      {
+        EXEC CICS INQUIRE
+                  CONNECTION(Target_Sysid)
+                  SERVSTATUS(Conn_Status)
+                  RESP(resp);
+
+        if (resp == dfhresp(SYSIDERR))
+        {
+             sprintf(Temp_Text,"E04 ERROR - SYSIDERR(%s)",
+                     Target_Sysid);
+             Output_Text(Temp_Text);
+             return_to_cics();
+        }
+        if (Conn_Status != dfhvalue(INSERVICE))
+        {
+           sprintf(Temp_Text,"E04 ERROR - connection(%s) "
+                             "not in service", Target_Sysid);
+           Output_Text(Temp_Text);
+           return_to_cics();
+        }
+      }
+
+    } /* End of Display_Parameters */
+
+
+ /********************************************************************/
+ /* Procedure    : Perform_FS_Tests                                  */
+ /* Function     : To Execute the Function Shipping Tests            */
+ /*                using recoverable and non recoverable AUX TSQs    */
+ /* Input        : None                                              */
+ /* Returns      : FS Failed Call Count                              */
+ /********************************************************************/
+
+  static int Perform_FS_Tests()
+    {
+      cics_char_t   TS_Queue_Name [9];
+      cics_char_t   TS_Queue_From_Data [81];
+      cics_char_t   TS_Queue_To_Data [81];
+      cics_sshort_t TS_Queue_Data_Length=26;
+
+      int FS_Success_Count=0;
+      int FS_Error_Count=0;
+      int Counter=0;
+
+      Output_Text("P11 Function Shipping in progress");
+
+      strcpy(TS_Queue_Name,"PING0001");
+      strcpy(TS_Queue_From_Data,"Test message from CICSPING");
+      TS_Queue_Data_Length=(cics_sshort_t) strlen(TS_Queue_From_Data);
+
+      while(++Counter<=2)
+        {
+
+          EXEC CICS WRITEQ TS
+                    QUEUE(TS_Queue_Name)
+                    SYSID(Target_Sysid)
+                    FROM(TS_Queue_From_Data)
+                    LENGTH(TS_Queue_Data_Length)
+                    NOSUSPEND
+                    RESP(resp);
+
+          if (resp!=dfhresp(NORMAL))
+          {
+               FS_Error_Count++;
+               sprintf(Temp_Text,
+                 "E11 ERROR - WRITEQ TS QUEUE(%8s) SYS(%s) ",
+                  TS_Queue_Name, Target_Sysid);
+               Resp_Error(Temp_Text);
+          }
+          else FS_Success_Count++;
+
+          EXEC CICS READQ TS
+                    QUEUE(TS_Queue_Name)
+                    SYSID(Target_Sysid)
+                    INTO(TS_Queue_To_Data)
+                    LENGTH(TS_Queue_Data_Length)
+                    RESP(resp);
+
+          if (resp!=dfhresp(NORMAL))
+          {
+               FS_Error_Count++;
+               sprintf(Temp_Text,
+                 "E12 ERROR - READQ TS QUEUE(%s) SYS(%s) ",
+                  TS_Queue_Name, Target_Sysid);
+               Resp_Error(Temp_Text);
+          }
+          else FS_Success_Count++;
+
+          EXEC CICS DELETEQ TS
+                    QUEUE(TS_Queue_Name)
+                    SYSID(Target_Sysid)
+                    RESP(resp);
+
+          if (resp!=dfhresp(NORMAL))
+          {
+               FS_Error_Count++;
+               sprintf(Temp_Text,
+                 "E13 ERROR - READQ TS QUEUE(%8s) SYS(%s) ",
+                  TS_Queue_Name, Target_Sysid);
+               Resp_Error(Temp_Text);
+          }
+          else FS_Success_Count++;
+
+
+          EXEC CICS SYNCPOINT
+                    RESP(resp);
+
+          if (resp!=dfhresp(NORMAL))
+          {
+               FS_Error_Count++;
+               Resp_Error("E14 ERROR - SYNCPOINT");
+          }
+          else FS_Success_Count++;
+
+          /* Now again but with a longer msg and a recoverable TSQ */
+          /* Need to define recoverable TSQ template "R"           */
+          strcpy(TS_Queue_Name,"RPING   ");
+          strcpy(TS_Queue_From_Data,
+                 "Recoverable test message from CICSPING");
+          TS_Queue_Data_Length = 
+            (cics_sshort_t) strlen(TS_Queue_From_Data);
+
+        }
+
+      Total_Success_Count += FS_Success_Count;
+
+      sprintf(Temp_Text,
+              "P12 FS Calls Complete %d/%d Successful, Fails = %d",
+               FS_Success_Count,
+               FS_Success_Count+FS_Error_Count,
+               FS_Error_Count);
+
+      Output_Text(Temp_Text);
+
+      return(FS_Error_Count);
+
+    } /* End of Perform_FS_Tests */
+
+
+ /********************************************************************/
+ /* Procedure    : Perform_DPL_Tests                                 */
+ /* Function     : To Execute the Distributed Program Link tests     */
+ /*                using the basic DPL options                       */
+ /* Input        : None                                              */
+ /* Returns      : DPL Failed Call Count                             */
+ /********************************************************************/
+
+  static int Perform_DPL_Tests()
+    {
+      cics_char_t DPL_Data [1000] = "";
+      short DPL_Success_Count=0;
+      short DPL_Error_Count=0;
+      short Counter=0;
+
+      strcpy(DPL_Data,"DPL data from PING");
+
+      Output_Text("P21 DPL in Progress");
+
+      EXEC CICS LINK PROGRAM("CICSPONG")
+                SYSID(Target_Sysid)
+                COMMAREA(DPL_Data)
+                LENGTH(100)
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+          {
+               DPL_Error_Count++;
+               sprintf(Temp_Text,
+                 "E21 ERROR - LINK PROGRAM(CICSPONG) SYS(%s) ",
+                  Target_Sysid);
+               Resp_Error(Temp_Text);
+          }
+          else DPL_Success_Count++;
+
+      /* 2nd link with data length */
+      EXEC CICS LINK PROGRAM("CICSPONG")
+                SYSID(Target_Sysid)
+                COMMAREA(DPL_Data)
+                DATALENGTH(18)
+                LENGTH(1000)
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+          {
+               DPL_Error_Count++;
+               sprintf(Temp_Text,
+                 "E22 ERROR - LINK PROGRAM(CICSPONG) SYS(%s) ",
+                  Target_Sysid);
+               Resp_Error(Temp_Text);
+          }
+          else DPL_Success_Count++;
+
+
+      /* Now syncpoint so we can do SYNCONRETURN */
+      EXEC CICS SYNCPOINT
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+          {
+               DPL_Error_Count++;
+               Resp_Error("E23 ERROR - SYNCPOINT");
+          }
+          else DPL_Success_Count++;
+
+
+      EXEC CICS LINK PROGRAM("CICSPONG")
+                SYSID(Target_Sysid)
+                COMMAREA(DPL_Data)
+                LENGTH(100)
+                SYNCONRETURN
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           DPL_Error_Count++;
+           sprintf(Temp_Text,
+                  "E24 ERROR - LINK PROG(CICSPONG) SYNCONRET SYS(%s)",
+                   Target_Sysid);
+           Resp_Error(Temp_Text);
+      }
+      else DPL_Success_Count++;
+
+
+      EXEC CICS SYNCPOINT
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           DPL_Error_Count++;
+           Resp_Error("E35 ERROR - SYNCPOINT");
+      }
+      else DPL_Success_Count++;
+
+      Total_Success_Count += DPL_Success_Count;
+
+      sprintf(Temp_Text,
+              "P22 DPL Calls Complete %d/%d Successful, Fails = %d",
+               DPL_Success_Count,
+               DPL_Success_Count+DPL_Error_Count,
+               DPL_Error_Count);
+      Output_Text(Temp_Text);
+
+      return(DPL_Error_Count);
+
+    } /* End of Perform_DPL_Tests */
+
+ /********************************************************************/
+ /* Procedure    : Perform_DTP_Tests                                 */
+ /* Function     : To Execute a basic CICS DTP conversation at       */
+ /*                synchronization level 1 with a change direction   */
+ /* Input        : None                                              */
+ /* Returns      : DTP Failed Call Count                             */
+ /********************************************************************/
+
+  static int Perform_DTP_Tests()
+    {
+      int  DTP_Success_Count=0;
+      int  DTP_Error_Count=0;
+
+      cics_char_t  Proc_Name [4]="PONG";
+      cics_char_t  Send_Data [100];
+      cics_char_t  Receive_Data [100];
+      cics_sshort_t Receive_Length;
+      cics_char_t  Convid [4];
+      cics_slong_t  State;
+
+      Output_Text("P41 DTP in progress");
+
+      EXEC CICS ALLOCATE SYSID(Target_Sysid)
+                STATE(State)
+                RESP(resp);
+
+
+      if ((resp!=dfhresp(NORMAL)) || (State!=dfhvalue(ALLOCATED)))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E41 ERROR - ALLOCATE");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (State!=dfhvalue(ALLOCATED))
+               State_Error(Temp_Text,dfhvalue(ALLOCATED),State);
+      }
+      else DTP_Success_Count++;
+
+      /* store conversation id */
+      memcpy(Convid, dfheiptr->eibrsrce, 4);
+
+
+      EXEC CICS CONNECT PROCESS
+                CONVID(Convid)
+                PROCNAME(Proc_Name)
+                PROCLENGTH(4)
+                SYNCLEVEL(1)
+                STATE(State)
+                RESP(resp);
+
+      if ((resp!=dfhresp(NORMAL)) || (State!=dfhvalue(SEND)))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E43 ERROR - CONNECT PROCESS ");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (State!=dfhvalue(SEND))
+               State_Error(Temp_Text,dfhvalue(SEND),State);
+      }
+      else DTP_Success_Count++;
+
+
+      strcpy(Send_Data,"DTP Test Data 001");
+
+      EXEC CICS SEND CONVID(Convid)
+                FROM(Send_Data)
+                LENGTH(17)
+                CONFIRM
+                STATE(State)
+                RESP(resp);
+
+      if ((resp!=dfhresp(NORMAL)) || (State!=dfhvalue(SEND)))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E44 ERROR - SEND CONFIRM");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (State!=dfhvalue(SEND))
+               State_Error(Temp_Text,dfhvalue(SEND),State);
+      }
+      else DTP_Success_Count++;
+
+
+      strcpy(Send_Data,"DTP Test Data 002 (longer!)");
+
+      EXEC CICS SEND CONVID(Convid)
+                FROM(Send_Data)
+                LENGTH(27)
+                INVITE
+                WAIT
+                STATE(State)
+                RESP(resp);
+
+      if ((resp!=dfhresp(NORMAL)) || ((State!=dfhvalue(RECEIVE))
+           && ((This_OPSYS == 'P') && (State!=dfhvalue(PENDRECEIVE)))))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E45 ERROR - SEND INVITE");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (This_OPSYS == 'P')
+           {
+                if (State!=dfhvalue(PENDRECEIVE))
+                    State_Error(Temp_Text,dfhvalue(PENDRECEIVE),State);
+           }
+           else  if (State!=dfhvalue(SEND))
+                 State_Error(Temp_Text,dfhvalue(RECEIVE),State);
+      }
+      else DTP_Success_Count++;
+
+
+
+      /* RECEIVE */
+      Receive_Length=100;
+
+      EXEC CICS RECEIVE CONVID(Convid)
+                INTO(Receive_Data)
+                LENGTH(Receive_Length)
+                STATE(State)
+                RESP(resp);
+
+       if ( (resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC))
+         || (State!=dfhvalue(FREE)) || (Receive_Length!=17) )
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E46 ERROR - RECEIVE ");
+           if ((resp!=dfhresp(NORMAL)) && (resp!=dfhresp(EOC)))
+               Resp_Error(Temp_Text);
+           if (Receive_Length!=17)
+               Length_Error(Temp_Text,17,Receive_Length);
+           if (State!=dfhvalue(FREE))
+               State_Error(Temp_Text,dfhvalue(FREE),State);
+      }
+      else DTP_Success_Count++;
+
+
+      EXEC CICS FREE CONVID(Convid)
+                STATE(State)
+                RESP(resp);
+      if ((resp!=dfhresp(NORMAL)) || (State!=0))
+      {
+           DTP_Error_Count++;
+           sprintf(Temp_Text, "E47 ERROR - FREE ");
+           if (resp!=dfhresp(NORMAL))
+               Resp_Error(Temp_Text);
+           if (State!=dfhvalue(SEND))
+               State_Error(Temp_Text,0,State);
+      }
+      else DTP_Success_Count++;
+
+
+      EXEC CICS SYNCPOINT
+                RESP(resp);
+
+      if ((resp!=dfhresp(NORMAL)))
+      {
+           DTP_Error_Count++;
+           Resp_Error("E47 ERROR - SYNCPOINT ");
+      }
+      else DTP_Success_Count++;
+
+      Total_Success_Count += DTP_Success_Count;
+
+      sprintf(Temp_Text,
+              "P42 DTP Calls Complete %d/%d Successful, Fails = %d",
+               DTP_Success_Count,
+               DTP_Success_Count+DTP_Error_Count,
+               DTP_Error_Count);
+      Output_Text(Temp_Text);
+
+      return(DTP_Error_Count);
+
+    } /* End of Perform_DTP_Tests */
+
+
+ /********************************************************************/
+ /* Procedure    : Perform_AP_Tests                                  */
+ /* Function     : To Execute the basic functionality of CICS        */
+ /*                Asynchronous Processing                           */
+ /* Input        : None                                              */
+ /* Returns      : AP Failed Call Count                              */
+ /********************************************************************/
+
+  static int Perform_AP_Tests()
+    {
+      int AP_Success_Count=0;
+      int AP_Error_Count=0;
+      cics_char_t Start_Data [10] = "" ;
+      cics_slong_t Start_Delay = 2;
+      cics_sshort_t Start_Length = 9;
+
+      strcpy (Start_Data,"PING Data");
+
+      Output_Text("P31 AP in progress");
+
+      EXEC CICS START TRANSID("PONG")
+                      SYSID(Target_Sysid)
+                      RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           AP_Error_Count++;
+           sprintf(Temp_Text,
+             "E31 ERROR - START TRANSID(PONG) SYS(%s)",Target_Sysid);
+           Resp_Error(Temp_Text);
+      }
+      else AP_Success_Count++;
+
+      EXEC CICS START TRANSID("PONG")
+                      SYSID(Target_Sysid)
+                      FROM(Start_Data)
+                      AFTER SECONDS(Start_Delay)
+                      LENGTH(Start_Length)
+                      RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           AP_Error_Count++;
+           sprintf(Temp_Text,
+             "E33 ERROR - START TRAN(PONG) FROM() SECS(%ld) SYS(%s)",
+              Start_Delay,Target_Sysid);
+           Resp_Error(Temp_Text);
+      }
+      else AP_Success_Count++;
+
+      EXEC CICS START TRANSID("PONG")
+                      SYSID(Target_Sysid)
+                      PROTECT
+                      RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           AP_Error_Count++;
+           sprintf(Temp_Text,
+             "E34 ERROR - START TRANSID(PONG) PROTECT SYS(%s)",
+              Target_Sysid);
+           Resp_Error(Temp_Text);
+      }
+      else AP_Success_Count++;
+
+      EXEC CICS START TRANSID("PONG")
+                      SYSID(Target_Sysid)
+                      NOCHECK
+                      RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           AP_Error_Count++;
+           sprintf(Temp_Text,
+             "E34 ERROR - START TRANSID(PONG) NOCHECK SYS(%s)",
+              Target_Sysid);
+           Resp_Error(Temp_Text);
+      }
+      else AP_Success_Count++;
+
+
+      EXEC CICS SYNCPOINT
+                RESP(resp);
+
+      if (resp!=dfhresp(NORMAL))
+      {
+           AP_Error_Count++;
+           Resp_Error("E35 ERROR - SYNCPOINT");
+      }
+      else AP_Success_Count++;
+
+      Total_Success_Count += AP_Success_Count;
+
+      sprintf(Temp_Text,
+              "P32 AP Calls Complete %d/%d Successful, Fails = %d",
+               AP_Success_Count,
+               AP_Success_Count+AP_Error_Count,
+               AP_Error_Count);
+
+      Output_Text(Temp_Text);
+
+      return(AP_Error_Count);
+
+    } /* End of Perform_AP_Tests */
+
+
+ /********************************************************************/
+ /* Procedure    : Display_Test_Results                              */
+ /* Function     : To Display Results of all Tests                   */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Display_Test_Results(int Total_Failure_Count)
+    {
+      sprintf(Temp_Text,
+              "Test %s complete, %d/%d Successful, Fails = %d",
+               Tranid_Data,
+               Total_Success_Count,
+               Total_Success_Count+Total_Failure_Count,
+               Total_Failure_Count);
+
+      Output_Text(Temp_Text);
+
+    } /* End of Display_Test_Results */
+
+
+
+/**********************************************************************
+ * Function name: cics_time                                           *
+ * Description:   gets the time                                       *
+ * Returns:       time_msg as 8 cics_char_t string                    *
+ **********************************************************************/
+
+  static void cics_time ()
+    {
+      EXEC CICS ASKTIME ABSTIME(abstime);
+      EXEC CICS FORMATTIME ABSTIME(abstime)
+                           TIME(time_msg)
+                           TIMESEP;
+      time_msg [8]='\0';
+    }
+
+
+ /********************************************************************/
+ /* Procedure    : Output_Text                                       */
+ /* Function     : To Display text to Termianl (if appropiate)       */
+ /*                and CICS CSMT log                                 */
+ /* Input        : Text to be displayed                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  static void Output_Text(char* Text)
+    {
+      cics_sshort_t Text_Length = 80 ;
+
+      cics_time();
+      sprintf (CSMT_log.msg, "%s %s",time_msg,Text);
+
+      EXEC CICS WRITEQ TD QUEUE("CSMT")
+                          FROM(&CSMT_log)
+                          LENGTH(Text_Length);
+
+     if ((Term_Code [0] > '\x90') &&
+         (Term_Code [0] < '\xa0'))
+     {
+          strncpy(output_screen.display, CSMT_log.msg, 92);
+          memset(output_screen.display+92, ' ',
+                 sizeof(output_screen.display)-92);
+          output_screen.display [scrnwd - 1] = InsertCursor;
+          output_screen.attr = ProtectAttribute;
+
+          EXEC CICS SEND FROM(&output_screen)
+                         LENGTH(len_out)
+                         WAIT;
+     }
+
+      /* clear log structures */
+      memset(CSMT_log.msg, ' ', 79);
+      CSMT_log.msg [79]='\0';
+
+      memset(output_screen.display, ' ', 159);
+      output_screen.display [159]='\0';
+
+    } /* End of Output_Text */
+
+/**********************************************************************
+ * Function name: return_to_cics                                      *
+ * Description:   Return to CICS and exit program                     *
+ * Parameters:    None                                                *
+ * Returns:       None                                                *
+ **********************************************************************/
+
+  static void return_to_cics(void)
+    {
+      cics_char_t blank_log [80] = "" ;
+
+      /* write blank line to log */
+      EXEC CICS WRITEQ TD QUEUE("CSMT")
+                          FROM(blank_log)
+                          LENGTH(80);
+
+
+
+
+      /* reposition 3270 cursor */
+      if ((Term_Code [0] > '\x90') &&
+          (Term_Code [0] < '\xa0'))
+      {
+           EXEC CICS SEND FROM(sba)
+                          LENGTH(4);
+      }
+
+      EXEC CICS RETURN;
+    }
+
+
+ /********************************************************************/
+ /* Procedure    : Main                                              */
+ /* Function     : To call all sub-procedures                        */
+ /* Input        : None                                              */
+ /* Returns      : Nothing                                           */
+ /********************************************************************/
+
+  int main( void )
+  {
+
+    /* initialise any global storage */
+    Total_Error_Count = 0;
+    Total_Success_Count = 0;
+
+    Process_Startup_Parameters();
+
+    Display_Parameters();
+
+    /* decide which tests to run */
+
+    if  ((Test_Num == ' ') || (Test_Num == '1'))
+     {
+          Total_Error_Count+=Perform_FS_Tests();
+     }
+
+    if  ((Test_Num == ' ') || (Test_Num == '2'))
+     {
+          Total_Error_Count+=Perform_DPL_Tests();
+     }
+
+    if  ((Test_Num == ' ') || (Test_Num == '3'))
+     {
+          Total_Error_Count+=Perform_AP_Tests();
+     }
+
+    if ((strcmp(Local_Sysid,Target_Sysid)!=0) &&
+        ((Test_Num == ' ') || (Test_Num == '4')))
+     {
+          Total_Error_Count+=Perform_DTP_Tests();
+     }
+
+
+    Display_Test_Results(Total_Error_Count);
+
+
+    return_to_cics();
+
+  } /* End of main */
+
+/**********************************************************************
+ * Function name: Resp_Error                                          *
+ * Description:   Handles unexpected responses                        *
+ * Inputs:        Error msg string                                    *
+ * Returns:       None                                                *
+ **********************************************************************/
+
+  static void Resp_Error (char* Text)
+    {
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+      cics_slong_t resp_save = resp;
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer);
+ 
+      switch (resp_save)
+      /* then put out message for the error */
+      {
+           case dfhresp(ERROR):
+                sprintf (Text_Buffer+10, "- ERROR");
+                break;
+           case dfhresp(IOERR):
+                sprintf (Text_Buffer+10, "- IOERR, abending Test");
+                Output_Text(Text_Buffer);
+                EXEC CICS ABEND ABCODE("IOER");
+                break;
+           case dfhresp(ISCINVREQ):
+                sprintf (Text_Buffer+10, "- ISCINVREQ");
+                break;
+           case dfhresp(INVREQ):
+                sprintf (Text_Buffer+10, "- INVREQ");
+                break;
+           case dfhresp(ITEMERR):
+                sprintf (Text_Buffer+10, "- ITEMERR");
+                break;
+           case dfhresp(LENGERR):
+                sprintf (Text_Buffer+10, "- LENGERR");
+                break;
+           case dfhresp(NOSPACE):
+                sprintf (Text_Buffer+10, "- NOSPACE");
+                break;
+           case dfhresp(NOTALLOC):
+                sprintf (Text_Buffer+10, "- NOTALLOC");
+                break;
+           case dfhresp(NOTAUTH):
+                sprintf (Text_Buffer+10, "- NOTAUTH");
+                break;
+           case dfhresp(PGMIDERR):
+                sprintf (Text_Buffer+10, "- PGMIDERR");
+                break;
+           case dfhresp(QIDERR):
+                sprintf (Text_Buffer+10, "- QIDERR");
+                break;
+           case dfhresp(ROLLEDBACK):
+                sprintf (Text_Buffer+10, "- ROLLEDBACK");
+                break;
+           case dfhresp(SIGNAL):
+                sprintf (Text_Buffer+10, "- SIGNAL");
+                break;
+           case dfhresp(SYSIDERR):
+                sprintf (Text_Buffer+10, "- SYSIDERR");
+                Output_Text(Text_Buffer);
+                return_to_cics();
+                break;
+           case dfhresp(TERMERR):
+                sprintf (Text_Buffer+10, "- TERMERR");
+                break;
+             default:
+                sprintf (Text_Buffer+10, "- EIBRESP(%ld)", resp_save);
+                break;
+ 
+      }
+
+      Output_Text(Text_Buffer);
+    }
+
+/**********************************************************************
+ * Function name: State_Error                                         *
+ * Description:   DTP State error handler                             *
+ * Inputs:        Expected state and returned state                   *
+ * Returns:       None                                                *
+ **********************************************************************/
+
+  static void State_Error (char         * Text,
+                           cics_slong_t   Exp_state,
+                           cics_slong_t   Ret_State)
+    {
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer);
+
+      /* Then tell the user what state was wrong */
+      sprintf (Text_Buffer+10,"- Expected state %ld returned state %ld",
+                     Exp_state,Ret_State);
+      Output_Text(Text_Buffer);
+
+      /* Now lets get out of here */
+      EXEC CICS ABEND ABCODE("STAT");
+    }
+
+
+/**********************************************************************
+ * Function name: Length_Error                                        *
+ * Description:   DTP Length error handler                            *
+ * Inputs:        Expected length and actual length                   *
+ * Returns:       None                                                *
+ **********************************************************************/
+
+  static void Length_Error (char          * Text,
+                            cics_sshort_t   Exp_Length,
+                            cics_sshort_t   Act_Length)
+    {
+      cics_char_t Text_Buffer [80];       /* local text buffer */
+
+      /* first output command that failed */
+      strcpy (Text_Buffer,Text);
+      Output_Text(Text_Buffer);
+
+      sprintf(Text_Buffer+10,
+              "- Expected LENGTH(%d) actual LENGTH(%d)",
+               Exp_Length,Act_Length);
+      Output_Text(Text_Buffer);
+    }

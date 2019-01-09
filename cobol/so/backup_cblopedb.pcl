@@ -1,0 +1,40 @@
+           $set sourceformat(free)
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. mw_dblink.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 wcc-prog          pic x(80).
+       01 prog-ret-code     pic s9(4) comp-5 value zero.
+       01 mwlogin.
+          02 mwlogin-len pic S9(4) comp-5.
+          02 mwlogin-arr pic x(127).
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+             01 H-SQL             PIC X(128).
+             01 ORACLELOGIN       PIC X(127) VARYING.
+ 	01 USERNAME   PIC X(20) VARYING.
+ 	01 PASSWORD   PIC X(20) VARYING.
+ 	01 EMP-NUMBER PIC S9(4) COMP.
+ 	01 JOB-TITLE  PIC X(90) VARYING.
+ 	01 HIRE-DATE  PIC X(9) VARYING.
+ 	01 SALARY     PIC S9(6)V99.
+           EXEC SQL END DECLARE SECTION END-EXEC.
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+      
+       PROCEDURE DIVISION.
+       LOGDB SECTION.
+       entry "execsql".
+*   ---------------- begin PL/SQL block ----------------- 
+     EXEC SQL EXECUTE 
+        BEGIN 
+            SELECT GDG_BASE_NAME, GDG_MAX_GEN, GDG_CUR_GEN 
+                INTO :JOB-TITLE, :HIRE-DATE, :SALARY 
+                FROM gdg_define 
+        END; 
+     END-EXEC. 
+*    ---------------- end PL/SQL block ----------------- 
+     DISPLAY 'Number  Job Title  Hire Date  Salary'. 
+     DISPLAY '------------------------------------'. 
+     DISPLAY EMP-NUMBER, JOB-TITLE, HIRE-DATE, SALARY. 
+       END-DO-CONNECT.
+          exit program returning prog-ret-code.
+

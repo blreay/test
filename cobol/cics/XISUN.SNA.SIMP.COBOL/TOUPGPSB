@@ -1,0 +1,368 @@
+         CBL  APOST
+        IDENTIFICATION DIVISION.
+        PROGRAM-ID. TOUPGPSB.
+        AUTHOR. TUXEDO DEVELOPMENT.
+        ENVIRONMENT DIVISION.
+        CONFIGURATION SECTION.
+        DATA DIVISION.
+        WORKING-STORAGE SECTION.
+
+      *****************************************************
+      * CPI-Communications Pseudonym File in SYS1.SIEAHDR.H
+      *****************************************************
+        COPY ATBCMCOB.
+        COPY ATRSCOB.
+      *****************************************************
+      * Log messages definitions
+      *****************************************************
+        01  LOGTIME PIC X(21).
+
+        01  LOGMSG.
+            05  FILLER PIC X(9) VALUE "TOUPIMSS ".
+            05  LOG-YEAR PIC X(2).
+            05  FILLER PIC X(1) VALUE "/".
+            05  LOG-MON PIC X(2).
+            05  FILLER PIC X(1) VALUE "/".
+            05  LOG-DAY PIC X(2).
+            05  FILLER PIC X(1) VALUE " ".
+            05  LOG-HOUR PIC X(2).
+            05  FILLER PIC X(1) VALUE ":".
+            05  LOG-MIN PIC X(2).
+            05  FILLER PIC X(1) VALUE ":".
+            05  LOG-SEC PIC X(2).
+            05  FILLER PIC X(1) VALUE " ".
+            05  LOG-ERROR.
+                07  LOG-ROUTINE PIC X(14).
+                07  FILLER PIC X(8) VALUE " FAILED(".
+                07  LOG-STATUS PIC 9(8).
+                07  FILLER PIC X(2) VALUE ") ".
+                07  LOG-ERR-TEXT PIC X(18).
+            05  FILLER REDEFINES LOG-ERROR.
+                07 LOG-TEXT PIC X(50).
+
+      ******************************************************
+      * 01  TP-STATUS PIC S9(8) COMP.
+      * 01  TP-STATUS2 PIC S9(8) COMP.
+
+        01  RECEIVE-FLAG PIC X(1).
+            88  CONTINUE-RECEIVE VALUE 'Y'.
+            88  SEND-STATE VALUE 'N'.
+
+        01  BUF-LEN PIC 9(4) COMP VALUE 0.
+        01  BUFFER PIC X(1024) VALUE SPACES.
+        01  TMP-BUF PIC X(1024) VALUE SPACES.
+        01  TMP-LEN PIC 9(4) COMP VALUE 0.
+
+
+        LINKAGE SECTION.
+      *  01  IOPCB.
+      *     05  LTERM           PIC   X(08).
+      *     05  FILLER          PIC   X(02).
+      *     05  IOPCB-STATUS    PIC   X(02).
+      *     05  FILLER          PIC   X(28).
+
+      ******************************************************
+      * PROCEDURE DIVISION USING IOPCB.
+        PROCEDURE DIVISION.
+      ******************************************************
+        MAIN.
+            PERFORM START-PROGRAM.
+            PERFORM INIT-CONVERSATION.
+            PERFORM RECEIVE-DATA.
+            PERFORM PROCESS-DATA.
+            PERFORM SEND-DATA.
+            PERFORM END-CONVERSATION.
+            PERFORM EXIT-PROGRAM.
+
+      ******************************************************
+      * Start program with command line args
+      ******************************************************
+        START-PROGRAM.
+            MOVE "Started" TO LOG-TEXT.
+            PERFORM DO-USERLOG.
+
+      *****************************************************
+      * Initialize conversation
+      *****************************************************
+        INIT-CONVERSATION.
+            CALL 'CMACCP' USING
+                CONVERSATION-ID
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMINIT" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMECT' USING
+                CONVERSATION-ID
+                CONVERSATION-TYPE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMECT" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+            IF NOT CM-MAPPED-CONVERSATION
+                MOVE "CMECT" TO LOG-ROUTINE
+                MOVE CONVERSATION-TYPE TO LOG-STATUS
+                MOVE "CONVERSATION-TYPE" TO LOG-ERR-TEXT
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMESL' USING
+                CONVERSATION-ID
+                SYNC-LEVEL
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMESL" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+            MOVE "CMESL" TO LOG-ROUTINE
+            MOVE SYNC-LEVEL TO LOG-STATUS
+            MOVE "SYNC-LEVEL" TO LOG-ERR-TEXT
+            PERFORM DO-USERLOG
+            IF NOT (CM-NONE OR CM-SYNC-POINT)
+      *         MOVE "CMESL" TO LOG-ROUTINE
+      *         MOVE SYNC-LEVEL TO LOG-STATUS
+      *         MOVE "SYNC-LEVEL" TO LOG-ERR-TEXT
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            CALL 'CMECS' USING
+                CONVERSATION-ID
+                CONVERSATION-STATE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMECS" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+            IF NOT CM-RECEIVE-STATE
+                MOVE "CMECT" TO LOG-ROUTINE
+                MOVE CONVERSATION-STATE TO LOG-STATUS
+                MOVE "CONVERSATION-STATE" TO LOG-ERR-TEXT
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+      *****************************************************
+      * Receive data
+      *****************************************************
+        RECEIVE-DATA.
+            MOVE 0 TO BUF-LEN.
+            MOVE LENGTH OF TMP-BUF TO REQUESTED-LENGTH.
+            PERFORM UNTIL SEND-STATE
+                CALL 'CMRCV' USING
+                    CONVERSATION-ID
+                    TMP-BUF
+                    REQUESTED-LENGTH
+                    DATA-RECEIVED
+                    RECEIVED-LENGTH
+                    STATUS-RECEIVED
+                    REQUEST-TO-SEND-RECEIVED
+                    CM-RETCODE
+                IF NOT (CM-OK OR CM-DEALLOCATED-NORMAL)
+                    MOVE "CMRCV" TO LOG-ROUTINE
+                    MOVE CM-RETCODE TO LOG-STATUS
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+      *         MOVE "CMRCV" TO LOG-ROUTINE
+      *         MOVE REQUEST-TO-SEND-RECEIVED TO LOG-STATUS
+      *         MOVE "REQUEST-TO-SEND-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE STATUS-RECEIVED TO LOG-STATUS
+      *         MOVE "STATUS-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE DATA-RECEIVED TO LOG-STATUS
+      *         MOVE "DATA-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+
+                IF NOT (CM-NO-DATA-RECEIVED OR
+                    CM-COMPLETE-DATA-RECEIVED)
+                    MOVE "CMRCV" TO LOG-ROUTINE
+                    MOVE DATA-RECEIVED TO LOG-STATUS
+                    MOVE "DATA-RECEIVED" TO LOG-ERR-TEXT
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+                EVALUATE TRUE
+                    WHEN CM-NO-STATUS-RECEIVED
+                    WHEN CM-DEALLOCATED-NORMAL OR CM-SEND-RECEIVED
+                        SET SEND-STATE TO TRUE
+                    WHEN CM-CONFIRM-RECEIVED
+                        CALL 'CMCFMD' USING
+                            CONVERSATION-ID
+                            CM-RETCODE
+                        IF NOT CM-OK
+                            MOVE "CMCFMD" TO LOG-ROUTINE
+                            MOVE CM-RETCODE TO LOG-STATUS
+                            PERFORM DO-LOG-ERR
+                        END-IF
+                    WHEN CM-CONFIRM-SEND-RECEIVED
+                        CALL 'CMCFMD' USING
+                            CONVERSATION-ID
+                            CM-RETCODE
+                        IF NOT CM-OK
+                            MOVE "CMCFMD" TO LOG-ROUTINE
+                            MOVE CM-RETCODE TO LOG-STATUS
+                            PERFORM DO-LOG-ERR
+                        END-IF
+                        SET SEND-STATE TO TRUE
+                    WHEN OTHER
+                        MOVE "CMRCV" TO LOG-ROUTINE
+                        MOVE STATUS-RECEIVED TO LOG-STATUS
+                        MOVE "STATUS-RECEIVED" TO LOG-ERR-TEXT
+                        PERFORM DO-LOG-ERR
+                END-EVALUATE
+
+                IF RECEIVED-LENGTH > 0
+                    SUBTRACT BUF-LEN FROM LENGTH OF BUFFER GIVING
+                        TMP-LEN
+                    IF TMP-LEN > 0
+                        IF RECEIVED-LENGTH <= TMP-LEN
+                            MOVE RECEIVED-LENGTH TO TMP-LEN
+                        END-IF
+                        MOVE TMP-BUF(1:TMP-LEN) TO
+                            BUFFER(BUF-LEN + 1:TMP-LEN)
+                        ADD TMP-LEN TO BUF-LEN
+                    END-IF
+                    MOVE 0 TO RECEIVED-LENGTH
+                END-IF
+            END-PERFORM.
+
+            DISPLAY "RECV(" BUF-LEN "):" BUFFER(1:BUF-LEN).
+
+        PROCESS-DATA.
+            IF BUF-LEN > 0
+                INSPECT BUFFER CONVERTING
+                    'abcdefghijklmnopqrstuvwxyz' TO
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            END-IF.
+
+        SEND-DATA.
+            IF CM-NONE
+                SET CM-SEND-AND-DEALLOCATE TO TRUE
+            ELSE IF CM-SYNC-POINT
+                SET CM-SEND-AND-CONFIRM TO TRUE
+            END-IF.
+
+            CALL 'CMSST' USING
+                CONVERSATION-ID
+                SEND-TYPE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSST" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+
+            MOVE BUF-LEN TO SEND-LENGTH.
+            CALL 'CMSEND' USING
+                CONVERSATION-ID
+                BUFFER
+                SEND-LENGTH
+                REQUEST-TO-SEND-RECEIVED
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSEND" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-LOG-ERR
+            END-IF.
+            DISPLAY "SEND(" SEND-LENGTH "):" BUFFER(1:SEND-LENGTH).
+
+        END-CONVERSATION.
+            IF CM-SYNC-POINT
+                CALL 'CMRCV' USING
+                    CONVERSATION-ID
+                    TMP-BUF
+                    REQUESTED-LENGTH
+                    DATA-RECEIVED
+                    RECEIVED-LENGTH
+                    STATUS-RECEIVED
+                    REQUEST-TO-SEND-RECEIVED
+                    CM-RETCODE
+                IF NOT (CM-OK OR CM-DEALLOCATED-NORMAL)
+                    MOVE "CMRCV" TO LOG-ROUTINE
+                    MOVE CM-RETCODE TO LOG-STATUS
+                    PERFORM DO-LOG-ERR
+                END-IF
+
+      *         MOVE "CMRCV" TO LOG-ROUTINE
+      *         MOVE REQUEST-TO-SEND-RECEIVED TO LOG-STATUS
+      *         MOVE "REQUEST-TO-SEND-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE STATUS-RECEIVED TO LOG-STATUS
+      *         MOVE "STATUS-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+      *         MOVE DATA-RECEIVED TO LOG-STATUS
+      *         MOVE "DATA-RECEIVED" TO LOG-ERR-TEXT
+      *         PERFORM DO-USERLOG
+
+                IF CM-TAKE-COMMIT-DEALLOCATE
+                    CALL 'SRRCMIT' USING
+                        ATRS-RETURN-CODE-CONST
+                    IF NOT RR-OK
+                        MOVE "SRRCMIT" TO LOG-ROUTINE
+                        MOVE ATRS-RETURN-CODE-CONST TO LOG-STATUS
+                        PERFORM DO-LOG-ERR
+                    END-IF
+                ELSE
+                    CALL 'SRRBACK' USING
+                        ATRS-RETURN-CODE-CONST
+                    IF NOT RR-OK
+                        MOVE "SRRBACK" TO LOG-ROUTINE
+                        MOVE ATRS-RETURN-CODE-CONST TO LOG-STATUS
+                        PERFORM DO-LOG-ERR
+                    END-IF
+                END-IF
+            END-IF.
+
+      *****************************************************
+      * Log messages to the userlog
+      *****************************************************
+        DO-USERLOG.
+            MOVE FUNCTION CURRENT-DATE TO LOGTIME.
+            MOVE LOGTIME(3:4) TO LOG-YEAR.
+            MOVE LOGTIME(5:2) TO LOG-MON.
+            MOVE LOGTIME(7:2) TO LOG-DAY.
+            MOVE LOGTIME(9:2) TO LOG-HOUR.
+            MOVE LOGTIME(11:2) TO LOG-MIN.
+            MOVE LOGTIME(13:2) TO LOG-SEC.
+            DISPLAY LOGMSG.
+
+        DO-LOG-ERR.
+            PERFORM DO-USERLOG.
+            PERFORM EXIT-ERROR.
+
+      *****************************************************
+      *Leave Application
+      *****************************************************
+        EXIT-ERROR.
+            SET CM-DEALLOCATE-ABEND TO TRUE
+            CALL 'CMSDT' USING
+                CONVERSATION-ID
+                DEALLOCATE-TYPE
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMSDT" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-USERLOG
+            END-IF.
+
+            CALL 'CMDEAL' USING
+                CONVERSATION-ID
+                CM-RETCODE.
+            IF NOT CM-OK
+                MOVE "CMDEAL" TO LOG-ROUTINE
+                MOVE CM-RETCODE TO LOG-STATUS
+                PERFORM DO-USERLOG
+            END-IF.
+
+            PERFORM EXIT-PROGRAM.
+
+        EXIT-PROGRAM.
+            MOVE "Ended" TO LOG-TEXT.
+            PERFORM DO-USERLOG.
+            GOBACK.
