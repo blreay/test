@@ -1,8 +1,9 @@
 CC=g++
-CXXFLAGS= --std=c++14
+CXXFLAGS= --std=c++11
 
 EXE=smartpointer
 
-all: ${EXE}
+all: ${EXE} 
 
-
+clean:
+	rm -f ${EXE} *.o
