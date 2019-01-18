@@ -47,13 +47,14 @@ char* test2() {
     return xx;
 } 
 int main(int argc,const char * argv[]) {
-    unique_ptr<Base> xx4 = test();  //这种调用就可以直接赋值
+    std::unique_ptr<Base> xx4 = test();  //这种调用就可以直接赋值
     cout << "test auto" <<endl;
 	auto p0=test();
     cout << "test auto with set new pointer, p0 will be free" <<endl;
 	p0=test();
     cout << "reassign unique_ptr to xx4" <<endl;
 	xx4=test();
+	std::unique_ptr<Base> p11(new Base("123"));
 	//auto x4=xx4;
     cout << "unique_ptr<Base> xx4 " << xx4.get() <<endl;
 	auto y4=std::move(xx4);
