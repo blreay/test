@@ -6,6 +6,7 @@ EXE=smartpointer \
 	move \
 	mutex \
 	cond \
+	list \
 
 all: ${EXE} 
 
