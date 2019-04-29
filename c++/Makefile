@@ -8,6 +8,7 @@ EXE=smartpointer \
 	cond \
 	list \
 	rawstring \
+	semaphore \
 
 all: ${EXE} 
 
