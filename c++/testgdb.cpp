@@ -1,7 +1,8 @@
-/*
-* author: http://p9as.blogspot.com/2012/06/c11-semaphores.html
-* modified by: ilovers
-*/
+// This file is use to test gdb feature
+
+// make sure /tmp/1 doesn't, begin command line
+// gdb -x run_until_segfault.gdb ./testgdb
+// after a while ,touch /tmp/1, the gdb will stop there
  
 #include <mutex>
 #include <vector>
@@ -106,7 +107,17 @@ int main() {
 	a[20]=999;
 	va[20]=888;
 	va[21]=111;
-	// int ret=system("ls /tmp/3");
-	// if (ret != 0) strcpy(p, "aaa");
+
+	std::string msg=R"(
+// make sure /tmp/1 doesn't exit, begin command line
+// gdb -x run_until_segfault.gdb ./testgdb
+// after a while ,touch /tmp/1, the gdb will stop there
+)";
+	std::cout << msg << std::endl;
+	// make sure /tmp/1 doesn't exit, begin command line
+	// gdb -x run_until_segfault.gdb ./testgdb
+	// after a while ,touch /tmp/1, the gdb will stop there
+	int ret=system("ls /tmp/1");
+	if (ret == 0) strcpy(p, "aaa");
     return 0;
 }

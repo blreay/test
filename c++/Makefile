@@ -5,10 +5,12 @@ CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread
 EXE=smartpointer \
 	move \
 	mutex \
+	array \
 	cond \
 	list \
 	rawstring \
 	semaphore \
+	testgdb \
 
 all: ${EXE} 
 

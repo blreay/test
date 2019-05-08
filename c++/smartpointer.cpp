@@ -71,5 +71,12 @@ int main(int argc,const char * argv[]) {
 	auto p1=test_shared(); 
 	auto p2=p1;
 	cout << "p1 is " << *p1 << " p2 is" << *p2;
+
+    shared_ptr<Base> y=std::make_shared<Base>("aaabbb"); //be freed in this function
+	y.reset();
+	y.reset();
+    shared_ptr<Base> x=nullptr;
+	x.reset();
+	x.reset();
 }
 
