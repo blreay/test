@@ -107,6 +107,7 @@ int main() {
 	a[20]=999;
 	va[20]=888;
 	va[21]=111;
+	char* pp=new(char);
 
 	std::string msg=R"(
 // make sure /tmp/1 doesn't exit, begin command line
