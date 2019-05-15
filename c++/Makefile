@@ -11,6 +11,8 @@ EXE=smartpointer \
 	rawstring \
 	semaphore \
 	testgdb \
+	hex \
+	exectime \
 
 all: ${EXE} 
 
