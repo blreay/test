@@ -1,8 +1,10 @@
 #include <iostream> 
 #include <signal.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
   
 using namespace std;
   

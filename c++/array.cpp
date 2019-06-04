@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <queue>
+#include <vector>
 #include <list>
 #include <stdio.h>
  
@@ -99,6 +100,10 @@ int main()
 	if (nn==10);
 	int nnn=atoi(getenv("A")==nullptr?"75":getenv("A"));
 	cout << "nnn=" << nnn;
+    std::vector<int> a22={};
+    cout << "a2.size()=" << a22.size() << std::endl; 
+    std::vector<int> a11={0};
+    cout << "a1.size()=" << a11.size() << std::endl;
 	//cout << "p=" << p->call();
     
 }

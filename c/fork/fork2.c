@@ -6,6 +6,15 @@
 
 int main(void) {  
 	pid_t child,child2;  
+
+    struct  timeval start; 
+    struct  timeval end; 
+unsigned  long diff; 
+gettimeofday(&end,NULL); 
+diff = 1000000 * (end.tv_sec-start.tv_sec)+ end.tv_usec-start.tv_usec; 
+printf("thedifference is %ld\n",diff);
+
+
 	int status;  
 	printf("This will demostrate how to get child status\n");  
 	if ((child = fork()) == -1) {  
@@ -24,14 +33,18 @@ int main(void) {
 		//aa i = 5;  
 		i = 5;  
 		printf("I exit with %d\n", i);  
+        gettimeofday(&start,NULL); 
+	    printf("exit: %ld.%ld\n", start.tv_sec,  start.tv_usec);
 		exit(i);  
 	}  
 
 	while (((child = waitpid(getpid(),&status,0)) == -1)&(errno == EINTR));  
+    gettimeofday(&start,NULL); 
+    printf("waitpid: %ld.%ld\n", start.tv_sec,  start.tv_usec);
 
 	if (child == -1) { 
 /* 		printf("Wait Error.%s\n", strerror(errno));   */
-		printf("Wait Error.%d\n", errno);  
+		printf("Wait Error %d (%s)\n", errno, strerror(errno));
 	} else if (!status)  {
 		printf("Child %ld terminated normally return status is zero\n",  child);  
 	} else if (WIFEXITED(status))  {
@@ -39,6 +52,6 @@ int main(void) {
 	} else if (WIFSIGNALED(status)){  
 		printf("Child %ld terminated due to signal %d znot caught\n",  child, WTERMSIG(status));  
 	}
-	getchar();  
+	// getchar();
 	return (EXIT_SUCCESS);  
 }  
