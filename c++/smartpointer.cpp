@@ -7,6 +7,7 @@ class Base {
 		shared_ptr<Base> m_p1;
 		Base(std::string in) {
 			m_str=in;
+			cout << "in Base()" << this << endl;
 		} 
 		~Base() {
 			cout << "in ~Base()" << this << endl;
@@ -78,5 +79,15 @@ int main(int argc,const char * argv[]) {
     shared_ptr<Base> x=nullptr;
 	x.reset();
 	x.reset();
+	cout << "begin to test nullptr" << endl;
+    shared_ptr<Base> z=std::make_shared<Base>("ccccccc"); //be freed in this function
+	auto z2 = z;
+	z = nullptr;
+	cout << "end test nullptr:" << z.get() << endl;
+	cout << "begin to test reset" << endl;
+    shared_ptr<Base> z1=std::make_shared<Base>("ccccccc"); //be freed in this function
+	cout << "before reset:" << z1.get() << endl;
+	z1.reset();
+	cout << "end test reset:" << z1.get() << endl;
 }
 
