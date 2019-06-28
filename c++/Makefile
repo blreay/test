@@ -13,6 +13,9 @@ EXE=smartpointer \
 	testgdb \
 	hex \
 	exectime \
+	weak_ptr \
+	shared_ptr \
+	unique_ptr \
 
 all: ${EXE} 
 
