@@ -148,22 +148,15 @@ void  test8() {
 // 一共9个函数
 // get reset swap unique use_count operator* operator-> operator=  operator bool
 int main(int argc, char**argv) {
+	cout << "argc" << argc << "argv:" << argv << endl;
     test1(); // 测试get reset operator* operator->函数 
-
-    test2(); // 测试operator bool函数
-
-    test3(); // 测试swap函数
-
-    test4(); // 测试函数unique use_count operator=
-
-    //test5(); // 测试用同一个对象指针生成两个对象
-
-    test6(); // 测试作为函数参数和返回值
-
-    test7(); // 测试作为容器元素
-
-    test8(); // 测试使用指针或者引用作为参数
-
+    test2(); // 测试operator bool函数 
+    test3(); // 测试swap函数 
+    test4(); // 测试函数unique use_count operator= 
+    //test5(); // 测试用同一个对象指针生成两个对象 
+    test6(); // 测试作为函数参数和返回值 
+    test7(); // 测试作为容器元素 
+    test8(); // 测试使用指针或者引用作为参数 
     // getchar();
     return 0;
 }

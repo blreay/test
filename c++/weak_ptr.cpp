@@ -117,15 +117,11 @@ void test2()
 	cout << "ptr_b use count : " << ptr_b.use_count() << endl; // 输出：ptr_b use count : 1
 }
 
-int main(int argc, char* argv[])
-{
-
-	test_refer_to_each_other();
-
-	test1();
-
-	test2();
-
+int main(int argc, char* argv[]) { 
+	cout << "argc" << argc << "argv:" << argv << endl;
+	test_refer_to_each_other(); 
+	test1(); 
+	test2(); 
 	// getchar();
 	return 0;
 }

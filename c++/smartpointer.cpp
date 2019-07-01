@@ -47,9 +47,71 @@ char* test2() {
     cout << &xx << endl;
     return xx;
 } 
+
+/*
+#include <memory>
+#include <iostream>
+#include <malloc.h>
+#include <map>
+*/
+
+void* operator new(std::size_t count){
+	void* p=malloc(count);
+    std::cout << "allocating " << count << " bytes:" << p << std::endl;
+    return p;
+} 
+void operator delete(void* ptr) noexcept {
+    std::cout << "global op delete called:" << ptr << std::endl;
+    std::free(ptr);
+} 
+struct MyLargeType {
+    ~MyLargeType() { std::cout << "destructor MyLargeType\n"; } 
+private:
+    int arr[100]; // wow... so huge!!!
+};
+/*
+####### BEGIN: test_memfree_with_weakptr
+make_shared:
+allocating 416 bytes:0x2415ee0
+destructor MyLargeType
+explicit new:
+allocating 400 bytes:0x2416090
+allocating 24 bytes:0x2415c20
+destructor MyLargeType
+global op delete called:0x2416090
+global op delete called:0x2415c20
+global op delete called:0x2415ee0
+####### END: test_memfree_with_weakptr 
+*/
+int test_memfree_with_weakptr_inner() {
+    std::weak_ptr<MyLargeType> pw,pw2;
+    {
+		// both object and block can not be freed here
+        std::cout << "make_shared: \n";
+        auto p = std::make_shared<MyLargeType>();
+        pw = p;        
+    }
+    {
+		// object can be freed, but the block will not
+        std::cout << "explicit new: \n";
+        std::shared_ptr<MyLargeType> p(new MyLargeType());
+        pw2 = p;
+    }
+	return 0;
+};
+/*
+As long as std::weak_ptrs refer to a control block (i.e., the weak count is greater than zero), that control block must continue to exist. And as long as a control block exists, the memory containing it must remain allocated. The memory allocated by a std::shared_ptr make function, then, can’t be deallocated until the last std::shared_ptr and the last std::weak_ptr referring to it have been destroyed.
+*/
+int test_memfree_with_weakptr() {
+	std::cout << "####### BEGIN: " << __FUNCTION__ << std::endl;
+	test_memfree_with_weakptr_inner();
+	std::cout << "####### END: " << __FUNCTION__ << std::endl;
+	return 0;
+};
+
 int main(int argc,const char * argv[]) {
     std::unique_ptr<Base> xx4 = test();  //这种调用就可以直接赋值
-    cout << "test auto" <<endl;
+    cout << "test auto" << argc << ":" << argv << endl;
 	auto p0=test();
     cout << "test auto with set new pointer, p0 will be free" <<endl;
 	p0=test();
@@ -89,5 +151,8 @@ int main(int argc,const char * argv[]) {
 	cout << "before reset:" << z1.get() << endl;
 	z1.reset();
 	cout << "end test reset:" << z1.get() << endl;
+
+	// https://dev.to/fenbf/how-a-weakptr-might-prevent-full-memory-cleanup-of-managed-object-i0i
+	test_memfree_with_weakptr();
 }
 
