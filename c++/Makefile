@@ -16,6 +16,7 @@ EXE=smartpointer \
 	weak_ptr \
 	shared_ptr \
 	unique_ptr \
+	stream \
 
 all: ${EXE} 
 
