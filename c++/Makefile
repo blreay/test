@@ -17,6 +17,7 @@ EXE=smartpointer \
 	shared_ptr \
 	unique_ptr \
 	int \
+	stream \
 
 all: ${EXE} 
 
