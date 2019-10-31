@@ -78,7 +78,7 @@ if (status != 0)
                        err_abort (status, "Create thread");
          }  
     //getchar(); 
-    printf ("Main exiting\n");
+    printf ("Main exiting: %ld %ld\n", 2<<20, 2^20);
      pthread_exit (NULL);
      return 0;
  }

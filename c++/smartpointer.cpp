@@ -136,8 +136,12 @@ int main(int argc,const char * argv[]) {
 	cout << "p1 is " << *p1 << " p2 is" << *p2;
 
     shared_ptr<Base> y=std::make_shared<Base>("aaabbb"); //be freed in this function
+	auto aaa=y;
 	y.reset();
-	y.reset();
+	// y.reset();
+	if (y == nullptr) {
+		std::cout << "testok###########################################" << aaa.use_count() << "y:" << y.use_count() << std::endl;
+	}
     shared_ptr<Base> x=nullptr;
 	x.reset();
 	x.reset();
