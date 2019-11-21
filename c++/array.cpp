@@ -16,6 +16,14 @@ using namespace std;
 class Test;
 std::shared_ptr<Test> p;
 
+class z {
+public:
+	int m;
+	int n;
+	z()  { std::cout << "constructor of z" << std::endl; }
+	~z() { std::cout << "disstructor of z" << std::endl; }
+};
+
 class Test{
 public:
     int a;
@@ -105,5 +113,13 @@ int main()
     std::vector<int> a11={0};
     cout << "a1.size()=" << a11.size() << std::endl;
 	//cout << "p=" << p->call();
+	std::vector<z> zv;
+	zv.resize(5);
+	for(int i=0; i<3; i++) {
+		z a;
+		zv.push_back(a);
+	}
+	std::cout << "zv.size=" << zv.size() << std::endl;
+	system("sleep 3");
     
 }
