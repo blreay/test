@@ -18,6 +18,7 @@ EXE=smartpointer \
 	unique_ptr \
 	int \
 	stream \
+	core \
 
 all: ${EXE} 
 
