@@ -20,6 +20,7 @@ EXE=smartpointer \
 	stream \
 	core \
 	func_overwrite \
+	cas \
 
 all: ${EXE} 
 
