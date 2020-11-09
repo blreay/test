@@ -21,6 +21,7 @@ EXE=smartpointer \
 	core \
 	func_overwrite \
 	cas \
+	time \
 
 all: ${EXE} 
 
