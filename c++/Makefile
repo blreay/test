@@ -1,6 +1,7 @@
 CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
-CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread
+CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread 
+CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread -Werror=format=
 
 EXE=smartpointer \
 	move \
@@ -22,6 +23,7 @@ EXE=smartpointer \
 	func_overwrite \
 	cas \
 	time \
+	thread \
 
 all: ${EXE} 
 
