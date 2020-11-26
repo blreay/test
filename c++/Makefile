@@ -1,7 +1,7 @@
 CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
-CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread 
 CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread -Werror=format=
+CXXFLAGS= --std=c++14 -fno-elide-constructors -g -lpthread
 
 EXE=smartpointer \
 	move \
@@ -24,6 +24,7 @@ EXE=smartpointer \
 	cas \
 	time \
 	thread \
+	promiss \
 
 all: ${EXE} 
 
