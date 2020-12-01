@@ -25,6 +25,7 @@ EXE=smartpointer \
 	time \
 	thread \
 	promiss \
+	lambda \
 
 all: ${EXE} 
 
