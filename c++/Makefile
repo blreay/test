@@ -26,6 +26,7 @@ EXE=smartpointer \
 	thread \
 	promiss \
 	lambda \
+	cond2 \
 
 all: ${EXE} 
 
