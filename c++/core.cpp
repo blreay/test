@@ -53,6 +53,10 @@ int main()
 	//va.push_back((uint8_t)33);
 	va.push_back(33);
 
+  for(auto i=va.begin(); i != va.end(); ++i) {
+    std::cout << std::to_string(*i) << "##";
+  }
+
 	std::stringstream ss;
 	for(auto i: va){
 		cout << "i=\"" << std::to_string(i) << "\"" << endl;
