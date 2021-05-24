@@ -4,8 +4,11 @@
 #include <string>
 #include <functional>
 #include <thread>
-#include <future>
 #include <chrono>
+#include <future>
+#include <exception>
+#include <stdexcept>
+#include <utility>
  
 int main_accumulate()
 {
@@ -64,10 +67,46 @@ int main_promiss() {
     new_work_thread.join();
 }
 
+void doThings(std::promise<std::string>& p){
+    //read a char
+    try{
+        std::cout << "read a char : ";
+        char c = std::cin.get();
+        //if 'x' throw runtime_error
+        if (c == 'x'){
+            throw std::runtime_error(std::string(" char ") + c +" read");
+        }
+        std::string s= std::string(" char ") + c +" processed";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000*3));
+        p.set_value(std::move(s));
+    }catch(...){
+        p.set_exception(std::current_exception()); //some exception
+    }
+}
+int main_test2(int argc,char *argv[]) {
+    try {
+        std::promise<std::string> p;
+        std::thread t(doThings,std::ref(p));
+        t.detach();
+        //get future
+        std::future<std::string> fs = p.get_future();
+        std::cout << "result is : " <<fs.get() <<std::endl;
+        std::cout << "result is : " <<fs.get() <<std::endl; // lead to exception
+    }
+    catch (std::exception const& e){
+        std::cerr << "Exception : " <<e.what() << std::endl;
+    }
+    catch(...){
+        std::cerr << "Exception " << std::endl;
+    }
+    return 0;
+}
 // https://en.cppreference.com/w/cpp/thread/promise
 int main() {
     // verify std::promiss
     main_promiss();
     // verify std::accumulate
     main_accumulate();
+
+    main_test2(0, nullptr);
 }

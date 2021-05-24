@@ -24,7 +24,7 @@ EXE=smartpointer \
 	cas \
 	time \
 	thread \
-	promiss \
+	promise \
 	lambda \
 	cond2 \
 
