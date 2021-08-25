@@ -27,6 +27,7 @@ EXE=smartpointer \
 	promise \
 	lambda \
 	cond2 \
+	call_private \
 
 all: ${EXE} 
 
