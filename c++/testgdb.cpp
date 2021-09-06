@@ -6,6 +6,7 @@
  
 #include <mutex>
 #include <vector>
+#include <map>
 #include <stdio.h>
 #include <string.h>
 #include <semaphore.h>
@@ -108,6 +109,53 @@ int main() {
 	va[20]=888;
 	va[21]=111;
 	char* pp=new(char);
+
+
+  /* following code is used to test gdb pretty-printers
+   * python
+import sys
+import os
+# https://sourceware.org/gdb/wiki/STLSupport
+# move following python folder to $HOME/tools/gdb_stl_python
+# svn co svn://gcc.gnu.org/svn/gcc/trunk/libstdc++-v3/python
+sys.path.insert(0, os.environ['HOME'] + '/tools/gdb_stl_python')
+from libstdcxx.v6.printers import register_libstdcxx_printers
+register_libstdcxx_printers (None)
+
+# run "dir" command to add source code search directory
+# gdb.execute('directory' + os.environ['SOURCES'] + '/package_name/src')
+gdb.execute('directory' + os.environ['PJ'])
+
+# load STL GDB evaluators/views/utilities - 1.03
+gdb.execute('source' + os.environ['HOME'] + '/.gdbinit.stl')
+end
+   */
+	std::vector<int> vb(100);
+	std::vector<int> vc(100);
+  std::map<std::string, std::vector<int>> map1;
+  map1["aaa"]=vb;
+  map1["bbb"]=vc;
+  std::map<std::string, std::vector<int>> map2;
+  map2["aaa0"]=vb;
+  map2["bbb0"]=vc;
+  std::map<uint32_t, std::map<std::string, std::vector<int>>> map0;
+  map0[1]=map1;
+  map0[2]=map2;
+
+  ilovers::MySemaphore z1(0), z2(0), z3(0);
+  std::vector<ilovers::MySemaphore*> sv1;
+  sv1.push_back(&z1);
+  sv1.push_back(&z2);
+  sv1.push_back(&z3);
+
+  std::vector<ilovers::MySemaphore*> sv2;
+  sv2.push_back(&z1);
+  sv2.push_back(&z2);
+  sv2.push_back(&z3);
+
+  std::map<std::string, std::vector<ilovers::MySemaphore*>> mapz0;
+  mapz0["abc"]=sv1;
+  mapz0["abd"]=sv2;
 
 	std::string msg=R"(
 // make sure /tmp/1 doesn't exit, begin command line
