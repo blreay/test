@@ -7,11 +7,11 @@
 CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
 CXXFLAGS= --std=c++14 -fno-elide-constructors -g -Werror=format=
-CXXFLAGS= --std=c++11 -fno-elide-constructors -g
+CXXFLAGS= --std=c++14 -fno-elide-constructors -g
 LDFLAGS= -lpthread
 
-MYCXXFLAGS=-I$$HOME/mychain/dev/storageservice/deps/src/jsoncpp_/include
-MYLDFLAGS=-L$$HOME/mychain/dev/storageservice/deps/src/jsoncpp_/src/lib_json -ljsoncpp
+MYCXXFLAGS=-I$$HOME/tmp/jsoncpp_/include
+MYLDFLAGS=-L$$HOME/tmp/jsoncpp_/src/lib_json -ljsoncpp
 
 #LIBS=jsoncpp
 

@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   uint32_t ret = parse_config_file(filepath, json);
   if (ret != 0) {
     std::cout << "parse configuration file failed" << std::endl;
-    return 1;
+    // return 1;
   }
   try {
     // read int value
