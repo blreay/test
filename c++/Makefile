@@ -40,7 +40,6 @@ EXE=smartpointer \
 	lambda \
 	cond2 \
 	call_private \
-	aaa \
 
 EXE_ADD=test_jsoncpp \
 

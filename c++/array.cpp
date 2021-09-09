@@ -44,7 +44,7 @@ public:
 	Test b;
 
 #define LOG_TRACE(fmt, args...)                                                                            \
-    LOG4CPLUS_TRACE_FMT(mychain::MyChainLogging::get_mutable_instance().RetrieveMyChainLogger(), "[%s:%d:%s] " fmt, \
+    LOG4CPLUS_TRACE_FMT(XXX::XXXXLOGING::get_mutable_instance().RetrieveXXXLogger(), "[%s:%d:%s] " fmt, \
                         basename((char*)__FILE__), __LINE__, (const char*)__FUNCTION__, ##args)
 
 #ifdef MY_TEST
