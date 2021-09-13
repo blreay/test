@@ -1,10 +1,90 @@
 #include <chrono>
 #include <iostream>
-std::time_t getTimeStamp()
-{
+#include <sys/time.h>
+#include <string.h>
+
+// this is thread safe
+std::string GetCurrentTimeInUs() {
+  static char szBuf[64] = {};
+  struct timeval    tv;
+  struct timezone   tz;
+  static __thread tm tm_start;
+
+  gettimeofday(&tv, &tz);
+  // localtime is not thread safe
+  // struct tm         *p;
+  // p = localtime(&tv.tv_sec);
+  auto p = &tm_start;
+  localtime_r(&tv.tv_sec, p);
+  snprintf(szBuf, sizeof(szBuf) -1 , "%02d-%02d-%02d %02d:%02d:%02d.%06ld", p->tm_year + 1900, p->tm_mon, p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec, tv.tv_usec);
+  return szBuf;
+}
+
+void printnow(){
+  static unsigned long long time=0;
+  timeval tm;
+  gettimeofday(&tm,NULL);
+  if(time !=0)
+    printf("cost time = %llu\n",tm.tv_sec*1000000+tm.tv_usec - time);
+  time = tm.tv_sec*1000000+tm.tv_usec;
+}
+
+void printtm(tm& tm){
+  printf("tm_sec:%d,tm_min:%d,tm_hour:%d,tm_day:%d,tm_mon:%d,tm_year:%d,tm_wday:%d,tm_yday:%d,tm_isdst:%d,tm_gmtoff:%d,tm_zone:%s\n",
+      tm.tm_sec,tm.tm_min,tm.tm_hour,tm.tm_mday,tm.tm_mon,tm.tm_year,tm.tm_wday,tm.tm_yday,tm.tm_isdst,tm.tm_gmtoff,tm.tm_zone);
+}
+
+tm* my_localtime_r(const time_t* tNow,tm* stTM){
+  static __thread long t_start = 0;
+  static __thread tm tm_start;
+
+#define my_localtime_r_t_oneday 86400                //(24*60*60)
+#define my_localtime_r_t_onehour 3600                //(60*60)
+
+  if(t_start == 0||*tNow<t_start||*tNow-t_start>=my_localtime_r_t_oneday){
+    localtime_r(tNow,&tm_start);
+    tm_start.tm_hour = 0;
+    tm_start.tm_min = 0;
+    tm_start.tm_sec = 0;
+    t_start=mktime(&tm_start);
+  }
+#define my_localtime_r_off  (*tNow-t_start)
+  tm_start.tm_hour = (*tNow-t_start)/(my_localtime_r_t_onehour);
+  tm_start.tm_min = ((*tNow-t_start)-my_localtime_r_t_onehour*tm_start.tm_hour)/60;
+  tm_start.tm_sec = ((*tNow-t_start)-my_localtime_r_t_onehour*tm_start.tm_hour-60*tm_start.tm_min);
+  memcpy(stTM,&tm_start,sizeof(tm));
+  return stTM;
+}
+int localtime_main() {
+  time_t m_tNow;
+  tm m_stTM;
+  tm m_stTM1;
+  tm* result;
+  tm* result1;
+  m_tNow = time(0);
+  int count = 100000;
+
+  printnow();
+  for(int i=0;i<count;i++){
+    result = localtime_r (&m_tNow, &m_stTM);
+  }
+  printnow();
+
+  for(int i =0;i<count;i++)
+  {
+    result1 = my_localtime_r( &m_tNow, &m_stTM1);
+  }
+  printnow();
+
+  printtm(*result);
+  printtm(*result1);
+}
+
+std::time_t getTimeStamp() {
   std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
   return tp.time_since_epoch().count();
 }
+
 int main()
 {
   // 以下为5分钟表达
@@ -112,4 +192,9 @@ int main()
     printf("direct time: %ld\n",std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch()).count());
     printf("direct time: %ld\n",std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count());
   }
+
+  localtime_main();
+
+  auto s = GetCurrentTimeInUs();
+  std::cout << "current time: " << s <<std::endl;
 }
