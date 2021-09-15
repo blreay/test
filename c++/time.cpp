@@ -1,9 +1,44 @@
 #include <chrono>
 #include <iostream>
+#include <time.h>
 #include <sys/time.h>
 #include <string.h>
+#include <ctime>
+#include <string>
+#include <sstream>
+#include <iomanip>
 
-// this is thread safe
+
+// 原文链接：https://blog.csdn.net/alwaysrun/article/details/105895295
+// 时间字符串(如：2020-05-02 14:40:31.015)
+std::string getTimeString(bool bLocal, bool bIncludeMS) {
+  auto tNow = std::chrono::system_clock::now();
+  //auto tmNow = std::chrono::system_clock::to_time_t(tNow);
+  auto tSeconds = std::chrono::duration_cast<std::chrono::seconds>(tNow.time_since_epoch());
+  auto secNow = tSeconds.count();
+  auto tMilli = std::chrono::duration_cast<std::chrono::milliseconds>(tNow.time_since_epoch());
+  auto ms = tMilli - tSeconds;
+  tm tmNow;
+  if (bLocal) {
+    // gcc compile fail:error: 'localtime_s' was not declared in this scope
+    // donot know how to fix it, following cannot work
+    //#define __STDC_WANT_LIB_EXT1__ 1
+    //#define __STDC_LIB_EXT1__ 1
+    //localtime_s(&tmNow, &secNow);
+    localtime_r(&secNow, &tmNow);
+  }
+  else {
+    gmtime_r(&secNow, &tmNow);
+  }
+  std::ostringstream oss;
+  oss << std::put_time(&tmNow, "%Y-%m-%d %H:%M:%S");
+  if (bIncludeMS) {
+    oss << "." << std::setfill('0') << std::setw(3) << ms.count();
+  }
+  return oss.str();
+}
+
+// this is thread safe, the best so far
 std::string GetCurrentTimeInUs() {
   static char szBuf[64] = {};
   struct timeval    tv;
@@ -20,6 +55,8 @@ std::string GetCurrentTimeInUs() {
   return szBuf;
 }
 
+//////////////////////////////////////////////////////////////////
+// show optimize of localtime_r
 void printnow(){
   static unsigned long long time=0;
   timeval tm;
@@ -28,19 +65,15 @@ void printnow(){
     printf("cost time = %llu\n",tm.tv_sec*1000000+tm.tv_usec - time);
   time = tm.tv_sec*1000000+tm.tv_usec;
 }
-
 void printtm(tm& tm){
   printf("tm_sec:%d,tm_min:%d,tm_hour:%d,tm_day:%d,tm_mon:%d,tm_year:%d,tm_wday:%d,tm_yday:%d,tm_isdst:%d,tm_gmtoff:%d,tm_zone:%s\n",
       tm.tm_sec,tm.tm_min,tm.tm_hour,tm.tm_mday,tm.tm_mon,tm.tm_year,tm.tm_wday,tm.tm_yday,tm.tm_isdst,tm.tm_gmtoff,tm.tm_zone);
 }
-
 tm* my_localtime_r(const time_t* tNow,tm* stTM){
   static __thread long t_start = 0;
   static __thread tm tm_start;
-
 #define my_localtime_r_t_oneday 86400                //(24*60*60)
 #define my_localtime_r_t_onehour 3600                //(60*60)
-
   if(t_start == 0||*tNow<t_start||*tNow-t_start>=my_localtime_r_t_oneday){
     localtime_r(tNow,&tm_start);
     tm_start.tm_hour = 0;
@@ -194,6 +227,16 @@ int main()
   }
 
   localtime_main();
+
+  // test getTimeString()
+  auto s1 = getTimeString(true, true);
+  auto s2 = getTimeString(true, false);
+  auto s3 = getTimeString(false, true);
+  auto s4 = getTimeString(false, false);
+  std::cout  << "getTimeString(true, true)"   << s1 << std::endl
+    << "getTimeString(true, false)"  << s2 << std::endl
+    << "getTimeString(false, true)"  << s3 << std::endl
+    << "getTimeString(false, false)" << s4 << std::endl;
 
   auto s = GetCurrentTimeInUs();
   std::cout << "current time: " << s <<std::endl;
