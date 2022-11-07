@@ -11,7 +11,9 @@ class Pipe:
         file_path = "/tmp/"
         try:
             self.fifo_path = "{}{}.pipe".format(file_path, pipe_name)
-            os.mkfifo(self.fifo_path)
+            print(f'fifo_path={self.fifo_path}')
+            if not os.path.exists(self.fifo_path):
+                os.mkfifo(self.fifo_path)
         except Exception:
             print(traceback.format_exc())
         self.block_file = "/tmp/block_{}.file".format(pipe_name)
@@ -44,11 +46,20 @@ class Pipe:
             self.__lock()
             f = os.open(self.fifo_path, os.O_RDWR | os.O_NONBLOCK)
             while True:
-                s = os.read(f, 1).decode("utf-8")
-                if s != ";":
-                    msg_str += s
-                else:
-                    break
+                try:
+                    s = os.read(f, 1).decode("utf-8")
+                    print(f'read data {s}')
+                    if s != ";":
+                        msg_str += s
+                    else:
+                        break
+                except Exception:
+                    print(traceback.format_exc())
+                    self.__unlock()
+                    time.sleep(2)
+                    self.__lock()
+                    continue
+
         except Exception:
             print(traceback.format_exc())
             return ""
@@ -61,6 +72,7 @@ if __name__ == '__main__':
     pipe_name = "test.pipe"
     pid = os.fork()
     if pid:
+        time.sleep(5)
         pipe = Pipe(pipe_name)
         pipe.send({"code": "A00000", "data": "xxx"})
         pipe.send({"code": "A00000", "data": "yyy"})
