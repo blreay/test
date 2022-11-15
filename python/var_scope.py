@@ -1,3 +1,5 @@
+#!/bin/env python
+
 import threading  
 import time  
 import random  
@@ -20,6 +22,17 @@ import context.aterror
 
 L = []   
 
+import ctypes
+libc = ctypes.cdll.LoadLibrary('libc.so.6')
+
+# System dependent, see e.g. /usr/include/x86_64-linux-gnu/asm/unistd_64.h
+SYS_gettid = 186
+
+def getThreadId():
+   """Returns OS thread id - Specific to Linux"""
+   return libc.syscall(SYS_gettid)
+
+
 class SubProcManager(MySyncManager):
     def __init__(self):
         from patch import trace
@@ -30,7 +43,7 @@ def test_reg():
     print(f'[{os.getpid()}]begin test_reg')
 
 def test_clean():
-    print(f'[{os.getpid()}]begin test_reg')
+    print(f'[{os.getpid()}]begin test_clean')
 
 def act():
     time.sleep(1)
@@ -38,8 +51,11 @@ def act():
     critical_error('zzy')
 
 class runner:
+    def do_it(self):
+        print(f'[{os.getpid()}/{getThreadId()}/{threading.get_native_id()}/{threading.current_thread().ident}] begin do_it in runner')
+
     def wait_error(e):
-        print(f'[{os.getpid()}]begin wait_error ')
+        print(f'[{os.getpid()}/{getThreadId()}/{threading.get_native_id()}/{threading.current_thread().ident}]begin wait_error ')
         from context.aterror import wait_critical_error
         wait_critical_error()
 
@@ -90,6 +106,8 @@ if __name__ == '__main__':
     handler=manager.test()
     _WAIT_ERROR_POOL = ThreadPoolExecutor(thread_name_prefix='WAIT_ERROR_POOL', max_workers=2)
     _WAIT_ERROR_POOL.submit(handler.wait_error).add_done_callback(on_error_callback)
+    handler.do_it()
+
 
     handler2=manager2.test()
     _WAIT_ERROR_POOL2 = ThreadPoolExecutor(thread_name_prefix='WAIT_ERROR_POOL2', max_workers=2)

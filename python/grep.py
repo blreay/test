@@ -1,7 +1,7 @@
 import os,shutil
 import re
 
-key='manager'
+key='man.*er'
 re_parttern=re.compile(r''+key, re.DOTALL)
 
 #返回含有目标文字的文件名
