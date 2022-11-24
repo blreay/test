@@ -1,14 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
 import signal
-# import gflags
 import psutil
 import time
-
-from absl import flags
-from absl import app
+# import gflags
+#from absl import flags, app
 
 import sys
 import logging
@@ -107,10 +105,10 @@ def find_all_parent(pid):
     exit(0)
 
 
-FLAGS = flags.FLAGS
-flags.DEFINE_integer('pid', 0, 'process id')
-flags.DEFINE_boolean('debug', False, 'whether debug')
-flags.DEFINE_string('name', 'func_test', 'test function name')
+#  FLAGS = flags.FLAGS
+#  flags.DEFINE_integer('pid', 0, 'process id')
+#  flags.DEFINE_boolean('debug', False, 'whether debug')
+#  flags.DEFINE_string('name', 'func_test', 'test function name')
 
 
 def get_ppid(pid, ppidlist):
