@@ -112,15 +112,37 @@ def find_all_parent(pid):
 
 
 def get_ppid(pid, ppidlist):
-    p = psutil.Process(pid=int(pid))
-    ppidlist.append(p)
-    if pid == 1:
+    if pid == 0:
         return 1
-    ppid = p.ppid()
-    #print(f'ppid={ppid}   cmd={p.cmdline()}')
-    get_ppid(ppid, ppidlist)
-    #time.sleep(1)
+    try:
+        p = psutil.Process(pid=int(pid))
+    except psutil.NoSuchProcess as e:
+        print(f'process not exist: {pid}')
+        return
+    ppidlist.append(p)
+    try:
+        ppid = p.ppid()
+    except Exception as e:
+        pass
+    else:
+        #print(f'ppid={ppid}   cmd={p.cmdline()}')
+        get_ppid(ppid, ppidlist)
+        #time.sleep(1)
     return ppid
+
+def gen_parent_tree(pid, tree):
+    result=[]
+    get_ppid(pid, result)
+    result.reverse()
+    last_ppid = ''
+    #print(f'{" List ":=^80s}')
+    for obj in result:
+        #print(f'{obj.pid:6d} --- {obj.cmdline()}')
+        if obj.pid == 1:
+            tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', data=f'{obj.cmdline()}')
+        else:
+            tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', parent=f'{last_ppid}', data=f'{obj.cmdline()}')
+        last_ppid = obj.pid
 
 def ps_find_parent(args):
     #print('ps_find_all')
@@ -128,41 +150,58 @@ def ps_find_parent(args):
     #     print(f'arg: {i}')
     id = args.cmdargs[0]
     #print(f'pid: {id}')
-    p = psutil.Process(pid=int(id))
+    #p = psutil.Process(pid=int(id))
+    try:
+        p = psutil.Process(pid=int(id))
+    except psutil.NoSuchProcess as e:
+        print(f'process not exist: {id}')
+        return
     # print(p.cmdline())
     # print(f'ppid={p.ppid()}')
-    result=[]
     tree = Tree()
-    get_ppid(id, result)
-    result.reverse()
-    last_ppid = ''
-    print(f'{" List ":=^80s}')
-    for obj in result:
-        print(f'{obj.pid:6d} --- {obj.cmdline()}')
-        #print(f'last_ppid {last_ppid}')
-        if obj.pid == 1:
-            tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', data=f'{obj.cmdline()}')
-        else:
-            tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', parent=f'{last_ppid}', data=f'{obj.cmdline()}')
-        last_ppid = obj.pid
+    gen_parent_tree(id, tree)
 
     AA=" Tree "
-    #print(f'{AA:=^80s}{" ":=<40s}')
     print(f'{" Tree ":=^80s}')
     tree.show()
 
+def gen_child_tree(pid, tree):
+    for obj in psutil.Process(int(pid)).children():
+        #print(f'pid: {obj.pid}')
+        tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', parent=f'{pid}', data=f'{obj.cmdline()}')
+        gen_child_tree(obj.pid, tree)
+
+
 def ps_find_child(args):
-    print('ps_find_child')
-    for i in args.cmdargs:
-        print(f'arg: {i}')
+    #print('ps_find_child')
+    #  for i in args.cmdargs:
+        #  print(f'arg: {i}')
+    id = args.cmdargs[0]
+    #obj = psutil.Process(int(id))
+    try:
+        obj = psutil.Process(pid=int(id))
+    except psutil.NoSuchProcess as e:
+        print(f'process not exist: {id}')
+        return
+    tree = Tree()
+    tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', data=f'{obj.cmdline()}')
+    gen_child_tree(id, tree)
+    print(f'{" Tree ":=^80s}')
+    tree.show()
 
 def ps_find_all(args):
-    print('ps_find_all')
-    for i in args.cmdargs:
-        print(f'arg: {i}')
-
-def case2():
-    print('case2')
+    #print('ps_find_all')
+    id = args.cmdargs[0]
+    try:
+        obj = psutil.Process(pid=int(id))
+    except psutil.NoSuchProcess as e:
+        print(f'process not exist: {id}')
+        return
+    tree = Tree()
+    gen_parent_tree(id, tree)
+    gen_child_tree(id, tree)
+    print(f'{" Tree ":=^80s}')
+    tree.show()
 
 
 def default():
@@ -193,8 +232,7 @@ def main(argv):
         help2 += '  ' + f'{key: <16s}' + " " + switch.get(key, "None").get("help", "a") + LR
     #parser.add_argument('cmd', type=str, metavar='CMD', choices=switch.keys(), help=f'command {[key for key in switch.keys()]} {LR} { [ key + "---" + switch.get(key, "None").get("help", "a")+LR for key in switch.keys() ]}')
     parser.add_argument('cmd', type=str, metavar='CMD', choices=switch.keys(), help=f'supported command {[key for key in switch.keys()]} {LR}{help2}')
-    parser.add_argument('cmdargs', metavar='arg', type=str, nargs='*',
-                        help='command argument, can be multiple')
+    parser.add_argument('cmdargs', metavar='arg', type=str, nargs='*', help='command argument, can be multiple')
     parser.add_argument('--sum', required=False, dest='accumulate', action='store_const',
                         const=sum, default=max,
                         help='sum the integers (default: find the max)')
@@ -202,11 +240,11 @@ def main(argv):
                         const=None, default=0,
                         help='show result in tree mode (default: no-tree)')
     args = parser.parse_args()
-    print(f'argv[]={argv} ret={parser} tree={args.tree}')
-    for i in args.cmdargs:
-        print(f'arg: {i}')
+    #  print(f'argv[]={argv} ret={parser} tree={args.tree}')
+    #  for i in args.cmdargs:
+        #  print(f'arg: {i}')
     #print(f'{args.accumulate(args.cmdargs)}')
-    print(f'CMD={args.cmd}')
+    #print(f'CMD={args.cmd}')
     switch.get(args.cmd, default).get('func', 'None')(args)
 
 

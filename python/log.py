@@ -4,6 +4,10 @@
 
 import threading
 import logging
+import os
+import threading
+from logging import handlers
+from concurrent.futures import ThreadPoolExecutor
 
 #  is there a way to show the thread native_id:
 #
@@ -40,21 +44,22 @@ def thread_id_filter(record):
     return record
 
 
-my_logger = logging.getLogger()
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | [%(process)d/%(thread)d] ThreadID=%(thread_id)s | %(message)s'))
-handler.addFilter(thread_id_filter)
-my_logger.addHandler(handler)
-my_logger.setLevel('INFO')
-my_logger.info('test123')
+def test_basic2():
+    my_logger = logging.getLogger()
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | [%(process)d/%(thread)d] ThreadID=%(thread_id)s | %(message)s'))
+    handler.addFilter(thread_id_filter)
+    my_logger.addHandler(handler)
+    my_logger.setLevel('INFO')
+    my_logger.info('test123')
 
-logobj = logging.getLogger('server')
-handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | ThreadID=%(thread_id)s | %(message)s'))
-logobj.addFilter(NoParsingFilter())
-## this log will not be output
-logobj.info('test123')
-## this log will be output
-logobj.info('test223')
+    logobj = logging.getLogger('server')
+    handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | ThreadID=%(thread_id)s | %(message)s'))
+    logobj.addFilter(NoParsingFilter())
+    ## this log will not be output
+    logobj.info('test123')
+    ## this log will be output
+    logobj.info('test223')
 
 #  【python logging】自定义日志过滤器，通过参数控制日志记录
 #  【需求要点】
@@ -78,8 +83,7 @@ class ContextFilter(logging.Filter):
         else:
             return False
 
-
-if __name__ == '__main__':
+def test_basic():
     # 创建日志对象
     print(f'{"#":#^64s}')
     logger = logging.getLogger(__name__)
@@ -117,3 +121,37 @@ if __name__ == '__main__':
     logger.warning('warn message')
     logger.error('error message1', extra=filter_dict)
     logger.error('error message2')
+
+def test_log_rotate():
+    filename="fair-compute-ppc.log"
+    os.system(f"/bin/rm {filename}*")
+    a=input("input number")
+    log = logging.getLogger('error.log')            # log保存位置
+    # log时间戳格式
+    format_str = logging.Formatter('%(asctime)s - %(thread)d\
+        %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    log.setLevel(logging.DEBUG)                     # log日志等级（往下的内容不保存）
+    sh = logging.StreamHandler()                    # 往屏幕上输出
+    # filename:log文件名；maxBytes：超过最大尺寸，log会另存一个文件；
+    # backupCount:最多保存多少个日志；encoding：保存编码格式
+    #  th = handlers.RotatingFileHandler(filename='fair-compute-ppc.', maxBytes=4000, \
+    #                                  backupCount=10, encoding='utf-8')
+    th = handlers.RotatingFileHandler(filename=f'{filename}', maxBytes=4000, \
+                                    backupCount=10)
+    th.setFormatter(format_str)                     # 设置文件里写入的格式
+    #log.addHandler(sh)
+    log.addHandler(th)
+
+    def writelog():
+        for i in range(1000):
+            log.info(f"{[i for i in range(10)]}")
+    writelog()
+    #with threading.
+    with ThreadPoolExecutor(thread_name_prefix='workload', max_workers=100) as executor:
+        for i in range(100):
+            executor.submit(writelog)
+
+if __name__ == '__main__':
+    #test_basic2()
+    #test_basic()
+    test_log_rotate()
