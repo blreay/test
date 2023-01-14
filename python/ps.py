@@ -22,7 +22,6 @@ def show_all():
         p = psutil.Process(pid)
         # get process name according to pid
         process_name = p.name()
-
         print("Process name is: %s, pid is: %s" % (process_name, pid))
 
     print("----------------------------- kill specific process --------------------------------")
@@ -105,6 +104,7 @@ def find_all_parent(pid):
     exit(0)
 
 
+################ gflags #####################
 #  FLAGS = flags.FLAGS
 #  flags.DEFINE_integer('pid', 0, 'process id')
 #  flags.DEFINE_boolean('debug', False, 'whether debug')
@@ -125,9 +125,7 @@ def get_ppid(pid, ppidlist):
     except Exception as e:
         pass
     else:
-        #print(f'ppid={ppid}   cmd={p.cmdline()}')
         get_ppid(ppid, ppidlist)
-        #time.sleep(1)
     return ppid
 
 def gen_parent_tree(pid, tree):
@@ -149,7 +147,6 @@ def ps_find_parent(args):
     # for i in args.cmdargs:
     #     print(f'arg: {i}')
     id = args.cmdargs[0]
-    #print(f'pid: {id}')
     #p = psutil.Process(pid=int(id))
     try:
         p = psutil.Process(pid=int(id))
@@ -157,17 +154,14 @@ def ps_find_parent(args):
         print(f'process not exist: {id}')
         return
     # print(p.cmdline())
-    # print(f'ppid={p.ppid()}')
     tree = Tree()
     gen_parent_tree(id, tree)
 
-    AA=" Tree "
     print(f'{" Tree ":=^80s}')
     tree.show()
 
 def gen_child_tree(pid, tree):
     for obj in psutil.Process(int(pid)).children():
-        #print(f'pid: {obj.pid}')
         tree.create_node(tag=f'{obj.pid}  {obj.cmdline()}', identifier=f'{obj.pid}', parent=f'{pid}', data=f'{obj.cmdline()}')
         gen_child_tree(obj.pid, tree)
 
@@ -207,11 +201,22 @@ def ps_find_all(args):
 def default():
     print('default')
 
+def ps_kill_all(args):
+    pid = args.cmdargs[0]
+
+    parent = psutil.Process(pid)
+    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+        print(f'kill child: {child.pid}')
+        child.kill()
+    parent.kill()
+
 
 switch = {'show_parent': {'func': ps_find_parent, 'help': '<PID> : show all parent process'},
           'show_child':  {'func': ps_find_child,  'help': '<PID> : show all child process'},
-          'show_all':    {'func': ps_find_all,    'help': '<PID> : show all parent and child process'}
+          'show_all':    {'func': ps_find_all,    'help': '<PID> : show all parent and child process'},
+          'kill_all':    {'func': ps_kill_all,    'help': '<PID> : kill all child and grandchild process'}
          }
+
 
 def main(argv):
     # ret = FLAGS(argv)
