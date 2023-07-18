@@ -35,12 +35,26 @@ class MyTest:
     def h(self, obj):
         return obj + "h"
 
+    def will_exception(self, obj):
+        raise ZeroDivisionError
+        a = 10/0
+        return 1
 
-@ray.remote
+@ray.remote(resources={'AAA':1})
 def test(n):
     time.sleep(n)
+    h = test2.remote(1)
+    check=[h]
+    ready_refs, remaining_refs = ray.wait(check, num_returns=1, timeout=3)
     #print(f'{os.getpid()}/{getThreadId()}/{threading.get_native_id()} input[{n}]')
     print(f'{os.getpid()}/{threading.get_native_id()} input[{n}]')
+    return n
+
+@ray.remote(resources={'BBB':1})
+def test2(n):
+    time.sleep(n)
+    #print(f'{os.getpid()}/{getThreadId()}/{threading.get_native_id()} input[{n}]')
+    print(f'zzy002 {os.getpid()}/{threading.get_native_id()} input[{n}]')
     return n
 
 @ray.remote
@@ -57,7 +71,24 @@ def test_thread(n):
 # 不使用注解的方式
 #test_remote = ray.remote(test)
 
-ray.init(num_cpus=10)
+#ray.init(num_cpus=10)
+#ray.init()
+ray.init(resources={'BBB':1, 'AAA':1})
+
+#######################################################
+# Test exception raised in ray.get(), what will happen
+h1 = MyTest.options(max_concurrency=5).remote('aaa')
+#t1 = ray.get(h1.will_exception.remote(2))
+ray.get(h1.will_exception.remote(2))
+#print(f"t1={t1}")
+print(f"OK")
+sys.exit(0)
+
+test_remote2 = test.remote(2)
+check=[test_remote2]
+ready_refs, remaining_refs = ray.wait(check, num_returns=1, timeout=4)
+
+sys.exit(0)
 
 # test Actor
 ## test "default mode" of ray, run serial in one thread
