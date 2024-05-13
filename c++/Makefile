@@ -7,7 +7,7 @@
 CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
 CXXFLAGS= --std=c++14 -fno-elide-constructors -g -Werror=format=
-CXXFLAGS= --std=c++14 -fno-elide-constructors -g
+CXXFLAGS= --std=c++17 -fno-elide-constructors -g
 LDFLAGS= -lpthread
 
 MYCXXFLAGS=-I$$HOME/tmp/jsoncpp_/include
@@ -40,7 +40,11 @@ EXE=smartpointer \
 	lambda \
 	cond2 \
 	call_private \
-	remove \
+	quick_sort \
+	lru \
+	link_sort \
+	link_sort2 \
+	random_set \
 
 EXE_ADD=test_jsoncpp \
 
