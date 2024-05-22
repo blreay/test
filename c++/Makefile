@@ -45,6 +45,7 @@ EXE=smartpointer \
 	link_sort \
 	link_sort2 \
 	random_set \
+	shiftarray \
 
 EXE_ADD=test_jsoncpp \
 
