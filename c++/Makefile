@@ -10,7 +10,11 @@ CXXFLAGS= --std=c++14 -fno-elide-constructors -g -Werror=format=
 CXXFLAGS= --std=c++17 -fno-elide-constructors -g
 LDFLAGS= -lpthread
 
-MYCXXFLAGS=-I$$HOME/tmp/jsoncpp_/include
+#MYCXXFLAGS=-I$$HOME/tmp/jsoncpp_/include
+#MYLDFLAGS=-L$$HOME/tmp/jsoncpp_/src/lib_json -ljsoncpp
+#yum install jsoncpp && yum install jsoncpp-devel: need :: yum install epel-release
+
+MYCXXFLAGS=-I/usr/include/jsoncpp
 MYLDFLAGS=-L$$HOME/tmp/jsoncpp_/src/lib_json -ljsoncpp
 
 #LIBS=jsoncpp

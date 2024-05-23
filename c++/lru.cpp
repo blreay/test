@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <cassert>
 
+using namespace std;
 template<typename K, typename V>
 class LRUCache {
 public:
