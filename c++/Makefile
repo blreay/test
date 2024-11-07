@@ -51,6 +51,7 @@ EXE=smartpointer \
 	random_set \
 	shiftarray \
   serial_stack \
+  operator \
 
 EXE_ADD=test_jsoncpp \
 
