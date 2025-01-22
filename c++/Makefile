@@ -52,6 +52,7 @@ EXE=smartpointer \
 	shiftarray \
   serial_stack \
   operator \
+  ipaddress \
 
 EXE_ADD=test_jsoncpp \
 
