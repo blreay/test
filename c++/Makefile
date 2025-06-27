@@ -8,6 +8,7 @@ CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
 CXXFLAGS= --std=c++14 -fno-elide-constructors -g -Werror=format=
 CXXFLAGS= --std=c++17 -fno-elide-constructors -g
+#CXXFLAGS= --std=c++20 -fno-elide-constructors -g
 LDFLAGS= -lpthread
 
 #MYCXXFLAGS=-I$$HOME/tmp/jsoncpp_/include
@@ -53,6 +54,7 @@ EXE=smartpointer \
   serial_stack \
   operator \
   ipaddress \
+  mynstat \
 
 EXE_ADD=test_jsoncpp \
 
