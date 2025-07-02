@@ -55,6 +55,7 @@ EXE=smartpointer \
   operator \
   ipaddress \
   mynstat \
+  from_to_chars \
 
 EXE_ADD=test_jsoncpp \
 
