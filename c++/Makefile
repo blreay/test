@@ -47,6 +47,7 @@ EXE=smartpointer \
 	call_private \
 	quick_sort \
 	lru \
+	lru_lock \
 	link_sort \
 	link_sort2 \
 	random_set \
