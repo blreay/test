@@ -42,6 +42,22 @@ class lru_cache {
         return true;
     }
 
+    bool pop(key_t& key, value_t& value) {
+        std::unique_lock<std::mutex> lock(mtx_);
+        if (cache_.empty()) {
+            return false;
+        }
+
+        auto last = cache_.end();
+        last--;
+        key = last->first;
+        value = last->second;
+
+        items_map_.erase(key);
+        cache_.pop_back();
+        return true;
+    }
+
     bool get(const key_t& key, value_t& value) {
         std::unique_lock<std::mutex> lock(mtx_);
 
@@ -102,27 +118,33 @@ int main() {
     cache.put(uint32_t(1), "test1");
     cache.put(uint32_t(2), "test2");
     cache.put(uint32_t(3), "test3");
-    if (cache.exists(uint32_t(1))) std::cout << "OK" << std::endl;
+    if (cache.exists(uint32_t(1))) std::cout << "01 OK" << std::endl;
 
     cache.put(uint32_t(4), "test4");
-    if (!cache.exists(uint32_t(1)))  std::cout << "OK" << std::endl;
+    if (!cache.exists(uint32_t(1)))  std::cout << "02 OK" << std::endl;
 
     std::string v;
     std::cout << cache.get(uint32_t(2), v) << ":" << v << std::endl;
 
     cache.put(uint32_t(5), "test5");
-    if (!cache.exists(uint32_t(3)))  std::cout << "OK" << std::endl;
+    if (!cache.exists(uint32_t(3)))  std::cout << "03 OK ->" << cache.size() << std::endl;
 
     cache.get(uint32_t(2), v);
-    if (v == "test2") std::cout << "OK" << std::endl;
+    if (v == "test2") std::cout << "04 OK" << std::endl;
     cache.get(uint32_t(4), v);
-    if (v == "test4") std::cout << "OK" << std::endl;
+    if (v == "test4") std::cout << "05 OK" << std::endl;
 
     // get last element
     uint32_t last_key;
     std::string last_value;
     cache.get_last(last_key, last_value);
-    if (last_key == uint32_t(5)) std::cout << "OK" << std::endl;
-    if (last_value == "test5") std::cout << "OK" << std::endl;
+    if (last_key == uint32_t(5)) std::cout << "06 OK" << std::endl;
+    if (last_value == "test5") std::cout << "07 OK" << std::endl;
+    cache.pop(last_key, last_value);
+    std::cout << last_key << ":" << last_value << "->" << cache.size() << std::endl;;
+    cache.pop(last_key, last_value);
+    std::cout << last_key << ":" << last_value << std::endl;;
+    if (last_key == uint32_t(2)) std::cout << "10 OK" << std::endl;
+    if (last_value == "test2") std::cout << "11 OK" << std::endl;
 }
 

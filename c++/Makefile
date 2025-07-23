@@ -58,6 +58,8 @@ EXE=smartpointer \
   mynstat \
   mynetstat \
   from_to_chars \
+  stl_queue \
+  stl_deque \
 
 EXE_ADD=test_jsoncpp \
 
