@@ -7,7 +7,8 @@
 CC=g++
 CXXFLAGS= --std=c++14 -fno-elide-constructors -DMY_TEST -g
 CXXFLAGS= --std=c++14 -fno-elide-constructors -g -Werror=format=
-CXXFLAGS= --std=c++17 -fno-elide-constructors -g
+CXXFLAGS= --std=c++14 -fno-elide-constructors -g
+#CXXFLAGS= --std=c++17 -fno-elide-constructors -g
 #CXXFLAGS= --std=c++20 -fno-elide-constructors -g
 LDFLAGS= -lpthread
 
@@ -60,6 +61,7 @@ EXE=smartpointer \
   from_to_chars \
   stl_queue \
   stl_deque \
+  uint128 \
 
 EXE_ADD=test_jsoncpp \
 
