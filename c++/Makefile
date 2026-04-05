@@ -62,6 +62,7 @@ EXE=smartpointer \
   stl_queue \
   stl_deque \
   uint128 \
+  forward \
 
 EXE_ADD=test_jsoncpp \
 
